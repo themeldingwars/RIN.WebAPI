@@ -71,7 +71,7 @@ namespace RIN.WebAPI.Controllers
         public async void CatchAll()
         {
             var baseDir = Path.Combine(Environment.CurrentDirectory, "../", "UnhandledRoutes");
-            var dir     = baseDir + Request.Path.Value?.Replace('/', '\\')[..^1];
+            var dir     = baseDir + Request.Path.Value?.Replace('/', '\\');
             Directory.CreateDirectory(dir);
 
             var filePath = Path.Combine(dir, $"{DateTime.Now.ToFileTime()}.txt");
