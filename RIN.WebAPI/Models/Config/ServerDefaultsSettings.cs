@@ -2,7 +2,7 @@
 {
     public class ServerDefaultsSettings
     {
-        public const string SERVER_DEFAULTS = "ServerDefaults";
+        public const string NAME = "ServerDefaults";
             
         public int CharaterLimitPerAccount { get; set; } = 2;
         public int CharaterNameMaxLength   { get; set; } = 40;
