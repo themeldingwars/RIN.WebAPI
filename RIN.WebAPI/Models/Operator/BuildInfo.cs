@@ -1,4 +1,4 @@
-﻿namespace RIN.WebAPI.Models
+﻿namespace RIN.WebAPI.Models.Operator
 {
     public class BuildInfo
     {

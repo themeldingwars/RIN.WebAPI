@@ -1,0 +1,31 @@
+version: "3.9"  # optional since v1.27.0
+services:
+  db:
+    container_name: RIN.WebAPI.DB
+    image: postgres:alpine
+    restart: always
+    ports:
+      - 5434:5432
+    environment:
+      POSTGRES_USER: tmwadmin
+      POSTGRES_PASSWORD: change
+      POSTGRES_DB: TMW
+    volumes: 
+      - dbvolume:/var/lib/postgresql/data
+
+  dbui:
+    container_name: RIN.WebAPI.PGAdmin
+    image: dpage/pgadmin4
+    restart: always
+    ports:
+      - 8081:80
+    environment: 
+      PGADMIN_DEFAULT_EMAIL: tmwlocaldev@tmwlocaldev.net
+      PGADMIN_DEFAULT_PASSWORD: tmwlocaldev
+    volumes: 
+      - type: bind
+        source: ./dbServers.json
+        target: /pgadmin4/servers.json
+
+volumes:
+  dbvolume:

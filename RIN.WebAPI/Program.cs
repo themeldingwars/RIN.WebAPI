@@ -17,6 +17,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment()) {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.MapFallbackToController("CatchAll", "Operator");
 }
 
 app.UseHttpsRedirection();

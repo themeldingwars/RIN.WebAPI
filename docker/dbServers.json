@@ -1,0 +1,13 @@
+{
+    "Servers": {
+        "1": {
+            "Name": "TMW Dev Server",
+            "Group": "TMW",
+            "Port": 5432,
+            "Username": "tmwadmin",
+            "Host": "db",
+            "SSLMode": "prefer",
+            "MaintenanceDB": "postgres"
+        }
+    }
+}
