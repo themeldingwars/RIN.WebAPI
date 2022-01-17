@@ -4,9 +4,11 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using RIN.WebAPI.Models;
 using RIN.WebAPI.Models.Config;
 using RIN.WebAPI.Models.Operator;
+using Serilog;
 
 namespace RIN.WebAPI.Controllers
 {
@@ -14,11 +16,13 @@ namespace RIN.WebAPI.Controllers
     [Route("[controller]")]
     public class OperatorController : TmwController
     {
-        private readonly IConfiguration       Configuration;
-        private          WebApiConfigSettings Config => Configuration.GetSection(WebApiConfigSettings.WEB_API_CONFIG).Get<WebApiConfigSettings>();
+        private readonly IConfiguration Configuration;
+        private readonly                 ILogger<OperatorController> Logger;
+        private WebApiConfigSettings    Config => Configuration.GetSection(WebApiConfigSettings.WEB_API_CONFIG).Get<WebApiConfigSettings>();
 
-        public OperatorController(IConfiguration configuration)
+        public OperatorController(IConfiguration configuration, ILogger<OperatorController> logger)
         {
+            Logger        = logger;
             Configuration = configuration;
         }
         
@@ -32,7 +36,7 @@ namespace RIN.WebAPI.Controllers
                 region      = "EU",
                 patch_level = 0
             };
-
+            
             return buildInfo;
         }
         
