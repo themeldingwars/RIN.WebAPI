@@ -17,11 +17,13 @@ namespace RIN.WebAPI.Controllers
     {
         private readonly IConfiguration              Configuration;
         private readonly ILogger<OperatorController> Logger;
+        private readonly DB.DB                       Db;
 
-        public ClientApiV1(IConfiguration configuration, ILogger<OperatorController> logger)
+        public ClientApiV1(IConfiguration configuration, ILogger<OperatorController> logger, DB.DB db)
         {
             Configuration = configuration;
             Logger        = logger;
+            Db            = db;
         }
 
         // Todo: log to db?
@@ -29,6 +31,7 @@ namespace RIN.WebAPI.Controllers
         public async Task<string> ClientEvent(ClientEvent evnt)
         {
             Logger.LogInformation("ClientEvent: {@evnt}", evnt);
+            await Db.LogClientEvent(evnt);
             return "";
         }
 

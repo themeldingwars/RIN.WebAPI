@@ -12,7 +12,7 @@ namespace RIN.WebAPI.Controllers
     {
         // Todo proper login
         [HttpPost("accounts/login")]
-        public async Task<object> Login()
+        public async Task<LoginResp> Login()
         {
             var serverDefaults = Configuration.GetSection(ServerDefaultsSettings.NAME).Get<ServerDefaultsSettings>() ?? new ServerDefaultsSettings();
             
@@ -38,6 +38,13 @@ namespace RIN.WebAPI.Controllers
             loginData.character_limit   = loginData.character_limit != -1 ? loginData.character_limit : serverDefaults.CharaterLimitPerAccount;
 
             return loginData;
+        }
+        
+        [HttpPost("accounts")]
+        public async Task<object> CreateAccount(CreateAccountReq req)
+        {
+
+            return new { };
         }
     }
 }

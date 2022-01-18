@@ -18,7 +18,7 @@ namespace RIN.WebAPI.Controllers
     {
         private readonly IConfiguration Configuration;
         private readonly                 ILogger<OperatorController> Logger;
-        private WebApiConfigSettings    Config => Configuration.GetSection(WebApiConfigSettings.WEB_API_CONFIG).Get<WebApiConfigSettings>();
+        private WebApiConfigSettings    Config => Configuration.GetSection(WebApiConfigSettings.NAME).Get<WebApiConfigSettings>();
 
         public OperatorController(IConfiguration configuration, ILogger<OperatorController> logger)
         {
