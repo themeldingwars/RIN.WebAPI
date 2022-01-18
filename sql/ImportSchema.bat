@@ -1,0 +1,1 @@
+(docker exec -i RIN.WebAPI.DB psql -U tmwadmin -s TMW) < webapi_schema.sql
