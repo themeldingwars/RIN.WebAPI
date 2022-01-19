@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -43,7 +44,11 @@ namespace RIN.WebAPI.Controllers
         [HttpPost("accounts")]
         public async Task<object> CreateAccount(CreateAccountReq req)
         {
+            //Logger.LogInformation("CreateAccount {@req}", req);
 
+            var birthday  = DateTime.Parse(req.birthday);
+            var accountId = Db.RegisterNewAccount(req.email, req.password, req.country, birthday, req.referral_key, req.email_optin);
+            
             return new { };
         }
     }

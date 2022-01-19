@@ -1,8 +1,10 @@
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RIN.WebAPI.DB;
 using RIN.WebAPI.DB.SDB;
+using RIN.WebAPI.Utils;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
@@ -32,6 +34,12 @@ builder.Host.UseSerilog((ctx, services, cfg) =>
        .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning);
 });
 
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    //options.JsonSerializerOptions.IgnoreNullValues       = true;
+    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
+
 // Add services to the container.
 builder.Services.AddSingleton<DB>();
 builder.Services.AddSingleton<SDB>();
@@ -42,6 +50,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+app.UseTmwExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment()) {

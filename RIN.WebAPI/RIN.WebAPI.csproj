@@ -15,4 +15,25 @@
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="logs\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="logs\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="logs\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Remove="logs\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="logs\log-20220117.json" />
+      <_ContentIncludedByDefault Remove="logs\log-20220118.json" />
+    </ItemGroup>
+
 </Project>

@@ -1,4 +1,6 @@
-﻿namespace RIN.WebAPI.Models.ClientApi
+﻿using System;
+
+namespace RIN.WebAPI.Models.ClientApi
 {
     public class CreateAccountReq
     {
@@ -10,8 +12,8 @@
         public string birthday     { get; set; }
         
         
-        public string steam_session_ticket { get; set; }
-        public string steam_user_id        { get; set; }
-        public string steam_cdkey          { get; set; }
+        public string? steam_session_ticket { get; set; }
+        public string? steam_user_id        { get; set; }
+        public string? steam_cdkey          { get; set; }
     }
 }
