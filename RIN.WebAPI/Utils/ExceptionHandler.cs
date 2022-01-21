@@ -34,9 +34,9 @@ namespace RIN.WebAPI.Utils
                                 code    = Error.Codes.ERR_UNKNOWN,
                                 message = $"Unknown Error: {contextFeature.Error.GetType()}"
                             };
+                            
+                            logger.Error(contextFeature.Error, $"Exception in {contextFeature.Error.Source}");
                         }
-                        
-                        logger.Error(contextFeature.Error, $"Exception in {contextFeature.Error.Source}");
 
                         var errorStr = JsonConvert.SerializeObject(err);
                         await context.Response.WriteAsync(errorStr);

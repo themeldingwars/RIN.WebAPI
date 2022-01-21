@@ -41,7 +41,7 @@ namespace RIN.WebAPI.Controllers
                 time_played_secs  = 0,
                 needs_name_change = false,
                 max_frame_level   = 20,
-                frame_sdb_id      = 76334,
+                frame_sdb_id      = 76335,
                 current_level     = 10,
                 gender            = 1,
                 current_gender    = "female",

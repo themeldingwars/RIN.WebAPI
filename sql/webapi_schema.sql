@@ -44,14 +44,15 @@ declare
 BEGIN
     
     -- Check if the email is already in use, the constraint will do this but want to avoid incrementing the sequence on fails
-    IF (SELECT exists (SELECT 1 FROM webapi."Accounts" WHERE webapi."Accounts".email = "Accounts".email)) THEN
+    IF (SELECT exists (SELECT 1 FROM webapi."Accounts" WHERE "Accounts".email = "CreateNewAccount".email)) THEN
+        new_account_id = -1;
         error_text = 'ERR_ACCOUNT_EXISTS';
         RETURN;
     END IF;
     
     INSERT INTO webapi."Accounts" (email, uid, password_hash, birthday, country, secret, email_opin,
                                    created_at, last_login, email_verified, is_dev, character_limit)
-    VALUES (email, decode(uid, 'base64'), password_hash, birthday, country, decode(secret, 'hex'), email_opin,
+    VALUES (email, uid, password_hash, birthday, country, secret, email_opin,
             current_timestamp, '-infinity', false, false, -1) RETURNING account_id INTO new_account_id;
 
     EXCEPTION WHEN OTHERS THEN
@@ -88,13 +89,13 @@ CREATE TABLE webapi."Accounts" (
     is_dev boolean DEFAULT false NOT NULL,
     character_limit smallint,
     email text NOT NULL,
-    uid bytea NOT NULL,
+    uid text NOT NULL,
     password_hash bytea NOT NULL,
     created_at timestamp without time zone NOT NULL,
     last_login timestamp without time zone,
     birthday date NOT NULL,
     country character(2) NOT NULL,
-    secret bytea NOT NULL,
+    secret text NOT NULL,
     email_opin boolean DEFAULT false NOT NULL,
     email_verified boolean DEFAULT false NOT NULL
 );

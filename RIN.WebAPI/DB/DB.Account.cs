@@ -3,6 +3,7 @@ using System.Data;
 using System.Threading.Tasks;
 using Dapper;
 using FauFau.Net.Web;
+using RIN.WebAPI.Models.DB;
 using RIN.WebAPI.Utils;
 
 namespace RIN.WebAPI.DB
@@ -28,13 +29,40 @@ namespace RIN.WebAPI.DB
                 p.Add("@country", country);
                 p.Add("@birthday", birthday, DbType.Date);
                 p.Add("@email_opin", emailOpin);
-                
+
                 p.Add("@error_text", dbType: DbType.String, direction: ParameterDirection.Output);
                 p.Add("@new_account_id", dbType: DbType.Int64, direction: ParameterDirection.Output);
 
                 var r = await conn.ExecuteAsync("webapi.\"CreateNewAccount\"", p, commandType: CommandType.StoredProcedure);
 
                 return (p.Get<long>("@new_account_id"), p.Get<string>("@error_text"));
+            });
+
+            return result;
+        }
+
+        // Get login data needed to verify a login and respond
+        public async Task<LoginResult?> GetLoginData(string uid)
+        {
+            const string SELECT_SQL = @"SELECT
+                webapi.""Accounts"".account_id,
+                is_dev,
+                secret,
+                character_limit,
+                true AS                                                             can_login,      
+                (vip.expiration_date > vip.start_date AND vip.account_id            IS NOT          NULL) AS is_vip,
+                COALESCE(EXTRACT(EPOCH FROM vip.expiration_date) * 1000, -1) AS vip_expiration, 
+                '' AS                                                               error,          
+                '' AS                                                               error_msg
+
+                FROM webapi.""Accounts""
+                LEFT JOIN webapi.""VipData"" AS vip ON vip.account_id = webapi.""Accounts"".account_id
+                WHERE uid = @uid";
+
+            var result = await DBCall(async conn =>
+            {
+                var r = await conn.QueryFirstOrDefaultAsync<LoginResult>(SELECT_SQL, new {uid});
+                return r;
             });
 
             return result;
