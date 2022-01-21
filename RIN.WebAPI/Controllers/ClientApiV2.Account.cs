@@ -61,6 +61,8 @@ namespace RIN.WebAPI.Controllers
 
             loginData.character_limit = loginData.character_limit != -1 ? loginData.character_limit : serverDefaults.CharaterLimitPerAccount;
 
+            await Db.UpdateLastLoginTime(loginResult.account_id);
+            
             return loginData;
         }
 

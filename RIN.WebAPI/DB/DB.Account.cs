@@ -67,5 +67,16 @@ namespace RIN.WebAPI.DB
 
             return result;
         }
+
+        // Update the last time this account logged in successfully
+        public async Task<bool> UpdateLastLoginTime(long accountId, DateTime? loginTime = null)
+        {
+            const string UPDATE_SQL = @"update webapi.""Accounts"" set last_login = @loginTime where account_id = @accountId;";
+
+            loginTime ??= DateTime.Now;
+            var result = await DBCall(conn => conn.ExecuteAsync(UPDATE_SQL, new {accountId, loginTime}));
+
+            return result > 0;
+        }
     }
 }
