@@ -18,11 +18,10 @@ namespace RIN.WebAPI.Controllers
                 is_dev           = true,
                 rb_balance       = 0,
                 name_change_cost = 0,
-                characters = new List<Character>
-                {
-                    CreateDefaultChar()
-                }
             };
+
+            var loginResult = await Db.GetLoginData(GetUid()); // temp
+            resp.characters = await Db.GetCharactersForAccount(loginResult.account_id);
 
             return resp;
         }
@@ -47,7 +46,7 @@ namespace RIN.WebAPI.Controllers
                 current_gender    = "female",
                 elite_rank        = 95487,
                 last_seen_at      = DateTime.Now,
-                visuals = new CharacterVisuals()
+                visuals = new CharacterBattleframeCombinedVisuals()
                 {
                     id     = 0,
                     race   = 0,

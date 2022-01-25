@@ -47,7 +47,7 @@ namespace RIN.WebAPI.DB
 
                 if (LogDbTimes) {
                     sw.Stop();
-                    Logger.LogInformation("DB call {functionName} took {elapsed}", functionName, sw.Elapsed);
+                    Logger.LogInformation("DB call {functionName} took {elapsed} ({ms}ms)", functionName, sw.Elapsed, sw.Elapsed.TotalMilliseconds);
                 }
                 
                 return result;

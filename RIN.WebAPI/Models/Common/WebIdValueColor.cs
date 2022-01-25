@@ -1,9 +1,12 @@
-﻿namespace RIN.WebAPI.Models.Common
+﻿using ProtoBuf;
+
+namespace RIN.WebAPI.Models.Common
 {
+    [ProtoContract]
     public class WebIdValueColor
     {
-        public int      id    { get; set; }
-        public WebColor value { get; set; }
+        [ProtoMember(1)] public int      id    { get; set; }
+        [ProtoMember(2)] public WebColor value { get; set; }
 
         public WebIdValueColor()
         {

@@ -76,6 +76,60 @@ ALTER FUNCTION webapi."CreateNewAccount"(email text, country text, birthday date
 COMMENT ON FUNCTION webapi."CreateNewAccount"(email text, country text, birthday date, email_opin boolean, uid text, secret text, password_hash bytea, OUT error_text text, OUT new_account_id bigint) IS 'Create a new account for a user and the default tables and data for it';
 
 
+--
+-- Name: CreateNewCharacter(bigint, text, boolean, integer, integer, bytea); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE FUNCTION webapi."CreateNewCharacter"(account_id bigint, name text, is_dev boolean, voice_setid integer, gender integer, visuals bytea, OUT error_text text, OUT new_character_id bigint) RETURNS record
+    LANGUAGE plpgsql
+    AS $$
+declare
+    c text;
+BEGIN
+
+    -- Check if the name isn't used
+    IF (SELECT exists(SELECT 1 FROM webapi."Characters" WHERE webapi."Characters".name = "CreateNewCharacter".name)) THEN
+        new_character_id = -1;
+        error_text = 'ERR_NAME_IN_USE';
+        RETURN;
+    END IF;
+
+    insert into webapi."Characters" (name,
+                                     is_dev,
+                                     is_active,
+                                     account_id,
+                                     created_at,
+                                     title_id,
+                                     time_played_secs,
+                                     needs_name_change,
+                                     gender,
+                                     last_seen_at,
+                                     race,
+                                     current_battleframe_id,
+                                     visuals)
+    values (name,
+            (is_dev AND (SELECT webapi."Accounts".is_dev FROM webapi."Accounts" WHERE webapi."Accounts".account_id = "CreateNewCharacter".account_id)),
+            true,
+            "CreateNewCharacter".account_id,
+            current_timestamp,
+            0,
+            null,
+            false,
+            gender,
+            current_timestamp,
+            0,
+            0,
+            visuals)
+    RETURNING character_guid INTO new_character_id;
+
+    error_text = '';
+
+END
+$$;
+
+
+ALTER FUNCTION webapi."CreateNewCharacter"(account_id bigint, name text, is_dev boolean, voice_setid integer, gender integer, visuals bytea, OUT error_text text, OUT new_character_id bigint) OWNER TO tmwadmin;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -109,6 +163,44 @@ ALTER TABLE webapi."Accounts" OWNER TO tmwadmin;
 
 ALTER TABLE webapi."Accounts" ALTER COLUMN account_id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME webapi."Accounts_account_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: Characters; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."Characters" (
+    character_guid bigint NOT NULL,
+    name text NOT NULL,
+    is_dev boolean DEFAULT false NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    account_id bigint NOT NULL,
+    created_at timestamp without time zone NOT NULL,
+    title_id integer,
+    time_played_secs integer,
+    needs_name_change boolean DEFAULT false NOT NULL,
+    gender smallint DEFAULT 0 NOT NULL,
+    last_seen_at timestamp without time zone NOT NULL,
+    race smallint NOT NULL,
+    current_battleframe_id integer NOT NULL,
+    visuals bytea NOT NULL
+);
+
+
+ALTER TABLE webapi."Characters" OWNER TO tmwadmin;
+
+--
+-- Name: Characters_character_guid_seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE webapi."Characters" ALTER COLUMN character_guid ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME webapi."Characters_character_guid_seq"
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -186,6 +278,14 @@ ALTER TABLE ONLY webapi."Accounts"
 
 
 --
+-- Name: Characters characters_pk; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."Characters"
+    ADD CONSTRAINT characters_pk PRIMARY KEY (character_guid);
+
+
+--
 -- Name: VipData vip_data_pk; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -212,6 +312,13 @@ CREATE UNIQUE INDEX accounts_email_uindex ON webapi."Accounts" USING btree (emai
 --
 
 CREATE UNIQUE INDEX accounts_uid_uindex ON webapi."Accounts" USING btree (uid);
+
+
+--
+-- Name: characters_name_uindex; Type: INDEX; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE UNIQUE INDEX characters_name_uindex ON webapi."Characters" USING btree (name);
 
 
 --

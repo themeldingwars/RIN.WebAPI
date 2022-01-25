@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using System.Net.Mime;
 using System.Text;
+using System.Web;
 using FauFau.Net.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -46,6 +47,8 @@ namespace RIN.WebAPI.Controllers
 
             return sb.ToString();
         }
+
+        protected string GetUid() => HttpUtility.UrlDecode(GetRed5Sig().UID.ToString());
 
         protected ContentResult ReturnError(string errorCode, string errorMessage)
         {

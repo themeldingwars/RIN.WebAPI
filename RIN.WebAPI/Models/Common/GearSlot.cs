@@ -1,9 +1,12 @@
-﻿namespace RIN.WebAPI.Models.Common
+﻿using ProtoBuf;
+
+namespace RIN.WebAPI.Models.Common
 {
+    [ProtoContract]
     public class GearSlot
     {
-        public int   slot_type_id { get; set; }
-        public int   sdb_id       { get; set; }
-        public ulong item_guid    { get; set; }
+        [ProtoMember(1)] public int   slot_type_id { get; set; }
+        [ProtoMember(2)] public int   sdb_id       { get; set; }
+        [ProtoMember(3)] public ulong item_guid    { get; set; }
     }
 }

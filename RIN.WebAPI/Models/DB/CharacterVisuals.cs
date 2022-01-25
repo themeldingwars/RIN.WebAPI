@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
 using ProtoBuf;
+using RIN.WebAPI.Models.ClientApi;
 using RIN.WebAPI.Models.Common;
 
-namespace RIN.WebAPI.Models.ClientApi
+namespace RIN.WebAPI.Models.DB
 {
     [ProtoContract]
-    public class CharacterBattleframeCombinedVisuals
+    public class CharacterVisuals
     {
         [ProtoMember(1)]  public int                   id                { get; set; }
         [ProtoMember(2)]  public int                   race              { get; set; }
@@ -24,11 +25,26 @@ namespace RIN.WebAPI.Models.ClientApi
         [ProtoMember(15)] public WebIdValueColorId     facial_hair       { get; set; }
         [ProtoMember(16)] public WebId                 glider            { get; set; }
         [ProtoMember(17)] public WebId                 vehicle           { get; set; }
-        [ProtoMember(18)] public List<WebId>           decals            { get; set; }
-        [ProtoMember(19)] public int                   warpaint_id       { get; set; }
-        [ProtoMember(20)] public List<uint>            warpaint          { get; set; }
-        [ProtoMember(21)] public List<int>             decalgradients    { get; set; }
-        [ProtoMember(22)] public List<int>             warpaint_patterns { get; set; }
-        [ProtoMember(23)] public List<int>             visual_overrides  { get; set; }
+        
+        public void ApplyToCharacterVisuals(CharacterBattleframeCombinedVisuals cVisuals)
+        {
+            //cVisuals.id                = id;
+            cVisuals.race              = race;
+            cVisuals.gender            = gender;
+            cVisuals.skin_color        = skin_color;
+            cVisuals.voice_set         = voice_set;
+            cVisuals.head              = head;
+            cVisuals.eye_color         = eye_color;
+            cVisuals.lip_color         = lip_color;
+            cVisuals.hair_color        = hair_color;
+            cVisuals.facial_hair_color = facial_hair_color;
+            cVisuals.head_accessories  = head_accessories;
+            cVisuals.ornaments         = ornaments;
+            cVisuals.eyes              = eyes;
+            cVisuals.hair              = hair;
+            cVisuals.facial_hair       = facial_hair;
+            cVisuals.glider            = glider;
+            cVisuals.vehicle           = vehicle;
+        }
     }
 }
