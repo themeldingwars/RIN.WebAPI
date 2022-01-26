@@ -64,6 +64,17 @@ namespace RIN.WebAPI.Controllers
 
             return hosts;
         }
+
+        [HttpGet("/clientapi/motd")]
+        public async Task<MessageOfTheDay> MOTD()
+        {
+            var message = new MessageOfTheDay
+            {
+                motd = "Welcome To Firefall Classic\n\nThe server is currently running on RIN.\n-The Melding Wars Team"
+            };
+
+            return message;
+        }
         
         // Log unhandled requests to look into adding later
         [HttpGet("*")]
