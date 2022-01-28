@@ -84,7 +84,12 @@ namespace RIN.WebAPI.DB
         {
             const string SELECT_SQL = @"SELECT
                 rb_balance,
-                name_change_cost
+
+                (SELECT
+                price as name_change_cost
+                FROM webapi.""Costs""
+                WHERE name = 'name_change_cost')
+
                 FROM webapi.""Accounts""
                 WHERE account_id = @accountId";
 
