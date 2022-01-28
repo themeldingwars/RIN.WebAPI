@@ -71,7 +71,7 @@ namespace RIN.WebAPI.Controllers
             if (nameData.name.Length > serverDefaults.CharaterNameMaxLength) data.reason.Add(Error.Codes.ERR_NAME_TOO_LONG);
             if (nameData.name.Length < serverDefaults.CharaterNameMinLength) data.reason.Add(Error.Codes.ERR_NAME_TOO_SHORT);
 
-            if (data.reason.Count == 0 && System.Text.RegularExpressions.Regex.IsMatch(nameData.name, @"^\d"))
+            if (data.reason.Count == 0 && Char.IsDigit(nameData.name[0]))
             {
                 data.reason.Add(Error.Codes.ERR_NAME_STARTS_WITH_NUMBER);
             }
