@@ -66,8 +66,8 @@ namespace RIN.WebAPI.Utils
         }
 
         // Game client does not allow for names to contain Control or Punctuation characters
-        // Only allows a name to contain the following characters a-z, A-Z, 0-9, '-', '_', and ' '
-        private static readonly Regex ValidChars = new Regex(@"^[a-zA-Z0-9-_ ]*$", RegexOptions.Compiled | RegexOptions.Singleline);
+        // Only allows a name to contain the following characters a-z, A-Z, 0-9, and ' '
+        private static readonly Regex ValidChars = new Regex(@"^[a-zA-Z0-9 ]*$", RegexOptions.Compiled | RegexOptions.Singleline);
 
         public static bool IsInvalidCharactersInName(string name)
         {
