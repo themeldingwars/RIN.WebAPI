@@ -36,12 +36,8 @@ namespace RIN.WebAPI.Controllers
         [HttpPost("characters/{characterGuid}/undelete")]
         public async Task<object> Undelete(long characterGuid)
         {
-            using var tx = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
-
             var loginResult = await Db.GetLoginData(GetUid());
             var restore_result = Db.UndeleteCharacterById(loginResult.account_id, characterGuid);
-
-            tx.Complete();
 
             if (restore_result.Result.code == Error.Codes.SUCCESS)
             {
