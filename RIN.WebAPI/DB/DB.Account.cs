@@ -13,7 +13,7 @@ namespace RIN.WebAPI.DB
         // Register a new account in the DB
         // Checks to make sure the email isn't already in use
         // Returns the account id and an error message if there is one
-        public async Task<(long id, string errorStr)> RegisterNewAccount(string email, string password, string country, DateTime birthday, string referralKey, bool emailOpin = false)
+        public async Task<(long id, string errorStr)> RegisterNewAccount(string email, string password, string country, DateTime birthday, string referralKey, bool emailOptin = false)
         {
             var uid          = Auth.GenerateUserId(email.AsSpan()).ToString();
             var secret       = Auth.GenerateSecret(email.AsSpan(), password.AsSpan()).ToString();
@@ -28,7 +28,7 @@ namespace RIN.WebAPI.DB
                 p.Add("@password_hash", passwordHash);
                 p.Add("@country", country);
                 p.Add("@birthday", birthday, DbType.Date);
-                p.Add("@email_opin", emailOpin);
+                p.Add("@email_optin", emailOptin);
 
                 p.Add("@error_text", dbType: DbType.String, direction: ParameterDirection.Output);
                 p.Add("@new_account_id", dbType: DbType.Int64, direction: ParameterDirection.Output);

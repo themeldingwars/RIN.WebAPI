@@ -107,7 +107,7 @@ namespace RIN.WebAPI.Controllers
             using var tx = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
 
             var loginResult = await Db.GetLoginData(GetUid());
-            var delete_result = Db.DeleteCharacterById(loginResult.account_id, characterGuid);
+            var delete_result = Db.SetPendingDeleteCharacterById(loginResult.account_id, characterGuid);
 
             tx.Complete();
 
