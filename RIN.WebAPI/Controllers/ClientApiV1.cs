@@ -76,8 +76,7 @@ namespace RIN.WebAPI.Controllers
                 data.reason.Add(Error.Codes.ERR_NAME_STARTS_WITH_NUMBER);
             }
 
-            // Only allows a name to contain the following characters a-z, A-Z, 0-9, '-', '_', and ' '
-            if (data.reason.Count == 0 && System.Text.RegularExpressions.Regex.IsMatch(nameData.name, @"^[a-zA-Z0-9-_ ]*$") == false)
+            if (data.reason.Count == 0 && CharacterUtil.IsInvalidCharactersInName(nameData.name))
             {
                 data.reason.Add(Error.Codes.ERR_INVALID_CHARACTER);
             }
