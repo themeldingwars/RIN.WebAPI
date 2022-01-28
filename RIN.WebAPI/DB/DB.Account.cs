@@ -47,6 +47,7 @@ namespace RIN.WebAPI.DB
             const string SELECT_SQL = @"SELECT
                 webapi.""Accounts"".account_id,
                 is_dev,
+                created_at,
                 secret,
                 character_limit,
                 true AS                                                             can_login,      
@@ -77,6 +78,23 @@ namespace RIN.WebAPI.DB
             var result = await DBCall( conn => conn.ExecuteAsync(UPDATE_SQL, new {accountId, loginTime}));
 
             return result > 0;
+        }
+
+        public async Task<AccountMTX> GetAccountMTXData(long accountId)
+        {
+            const string SELECT_SQL = @"SELECT
+                rb_balance,
+                name_change_cost
+                FROM webapi.""Accounts""
+                WHERE account_id = @accountId";
+
+            var result = await DBCall(async conn =>
+            {
+                var r = await conn.QueryFirstOrDefaultAsync<AccountMTX>(SELECT_SQL, new { accountId });
+                return r;
+            });
+
+            return result;
         }
     }
 }

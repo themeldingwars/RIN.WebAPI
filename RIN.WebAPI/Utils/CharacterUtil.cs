@@ -40,8 +40,8 @@ namespace RIN.WebAPI.Utils
         {
             var genderStr = gender switch
             {
-                0 => "female",
-                1 => "male"
+                0 => "male",
+                1 => "female"
             };
 
             return genderStr;

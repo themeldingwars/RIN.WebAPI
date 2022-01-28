@@ -42,18 +42,18 @@ CREATE FUNCTION webapi."CreateNewAccount"(email text, country text, birthday dat
 declare
     c text;
 BEGIN
-    
+
     -- Check if the email is already in use, the constraint will do this but want to avoid incrementing the sequence on fails
     IF (SELECT exists (SELECT 1 FROM webapi."Accounts" WHERE "Accounts".email = "CreateNewAccount".email)) THEN
         new_account_id = -1;
         error_text = 'ERR_ACCOUNT_EXISTS';
         RETURN;
     END IF;
-    
+
     INSERT INTO webapi."Accounts" (email, uid, password_hash, birthday, country, secret, email_opin,
-                                   created_at, last_login, email_verified, is_dev, character_limit)
+                                   created_at, last_login, email_verified, is_dev, character_limit, rb_balance, name_change_cost)
     VALUES (email, uid, password_hash, birthday, country, secret, email_opin,
-            current_timestamp, '-infinity', false, false, -1) RETURNING account_id INTO new_account_id;
+            current_timestamp, '-infinity', false, false, -1, 0, 0) RETURNING account_id INTO new_account_id;
 
     EXCEPTION WHEN OTHERS THEN
         GET STACKED DIAGNOSTICS c := CONSTRAINT_NAME;
@@ -77,10 +77,10 @@ COMMENT ON FUNCTION webapi."CreateNewAccount"(email text, country text, birthday
 
 
 --
--- Name: CreateNewCharacter(bigint, text, boolean, integer, integer, bytea); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+-- Name: CreateNewCharacter(bigint, text, boolean, integer, integer, integer, bytea); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
 --
 
-CREATE FUNCTION webapi."CreateNewCharacter"(account_id bigint, name text, is_dev boolean, voice_setid integer, gender integer, visuals bytea, OUT error_text text, OUT new_character_id bigint) RETURNS record
+CREATE FUNCTION webapi."CreateNewCharacter"(account_id bigint, name text, is_dev boolean, voice_setid integer, gender integer, current_battleframe_id integer, visuals bytea, OUT error_text text, OUT new_character_id bigint) RETURNS record
     LANGUAGE plpgsql
     AS $$
 declare
@@ -95,6 +95,7 @@ BEGIN
     END IF;
 
     insert into webapi."Characters" (name,
+                                     unique_name,
                                      is_dev,
                                      is_active,
                                      account_id,
@@ -108,17 +109,18 @@ BEGIN
                                      current_battleframe_id,
                                      visuals)
     values (name,
+            UPPER(name),
             (is_dev AND (SELECT webapi."Accounts".is_dev FROM webapi."Accounts" WHERE webapi."Accounts".account_id = "CreateNewCharacter".account_id)),
             true,
             "CreateNewCharacter".account_id,
             current_timestamp,
             0,
-            null,
+            0,
             false,
             gender,
             current_timestamp,
             0,
-            0,
+            current_battleframe_id,
             visuals)
     RETURNING character_guid INTO new_character_id;
 
@@ -128,7 +130,7 @@ END
 $$;
 
 
-ALTER FUNCTION webapi."CreateNewCharacter"(account_id bigint, name text, is_dev boolean, voice_setid integer, gender integer, visuals bytea, OUT error_text text, OUT new_character_id bigint) OWNER TO tmwadmin;
+ALTER FUNCTION webapi."CreateNewCharacter"(account_id bigint, name text, is_dev boolean, voice_setid integer, gender integer, current_battleframe_id integer, visuals bytea, OUT error_text text, OUT new_character_id bigint) OWNER TO tmwadmin;
 
 SET default_tablespace = '';
 
@@ -151,7 +153,9 @@ CREATE TABLE webapi."Accounts" (
     country character(2) NOT NULL,
     secret text NOT NULL,
     email_opin boolean DEFAULT false NOT NULL,
-    email_verified boolean DEFAULT false NOT NULL
+    email_verified boolean DEFAULT false NOT NULL,
+    rb_balance bigint NOT NULL,
+    name_change_cost integer NOT NULL
 );
 
 
@@ -178,6 +182,7 @@ ALTER TABLE webapi."Accounts" ALTER COLUMN account_id ADD GENERATED ALWAYS AS ID
 CREATE TABLE webapi."Characters" (
     character_guid bigint NOT NULL,
     name text NOT NULL,
+    unique_name text NOT NULL,
     is_dev boolean DEFAULT false NOT NULL,
     is_active boolean DEFAULT true NOT NULL,
     account_id bigint NOT NULL,
@@ -189,7 +194,9 @@ CREATE TABLE webapi."Characters" (
     last_seen_at timestamp without time zone NOT NULL,
     race smallint NOT NULL,
     current_battleframe_id integer NOT NULL,
-    visuals bytea NOT NULL
+    visuals bytea NOT NULL,
+    deleted_at timestamp without time zone,
+    expires_in timestamp without time zone
 );
 
 
@@ -262,6 +269,24 @@ COMMENT ON TABLE webapi."VipData" IS 'vip data, if the user has vip they should 
 
 
 --
+-- Name: LoginEvents; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."LoginEvents" (
+    id bigint NOT NULL,
+    name text,
+    description text,
+    color text,
+    is_active boolean DEFAULT false NOT NULL,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+
+ALTER TABLE webapi."LoginEvents" OWNER TO tmwadmin;
+
+
+--
 -- Name: ClientEvents ClientEvents_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -291,6 +316,14 @@ ALTER TABLE ONLY webapi."Characters"
 
 ALTER TABLE ONLY webapi."VipData"
     ADD CONSTRAINT vip_data_pk PRIMARY KEY (account_id);
+
+
+--
+-- Name: LoginEvents login_events_pk; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."LoginEvents"
+    ADD CONSTRAINT login_events_pk PRIMARY KEY (id);
 
 
 --
@@ -329,6 +362,13 @@ CREATE UNIQUE INDEX vip_data_account_id_uindex ON webapi."VipData" USING btree (
 
 
 --
+-- Name: login_events_id_uindex; Type: INDEX; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE UNIQUE INDEX login_events_id_uindex ON webapi."LoginEvents" USING btree (id);
+
+
+--
 -- Name: VipData vipdata_accounts_account_id_fk; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -339,4 +379,3 @@ ALTER TABLE ONLY webapi."VipData"
 --
 -- PostgreSQL database dump complete
 --
-

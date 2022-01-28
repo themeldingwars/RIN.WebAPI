@@ -24,7 +24,8 @@ namespace RIN.WebAPI.Models.ClientApi
         public DateTime                            last_seen_at      { get; set; }
         public CharacterBattleframeCombinedVisuals visuals           { get; set; }
         public List<GearSlot>                      gear              { get; set; }
-        public uint                                expires_in        { get; set; }
+        public long?                               expires_in        { get; set; }
+        public long?                               deleted_at        { get; set; }
         public string                              race              { get; set; }
         public List<int>                           migrations        { get; set; }
     }
