@@ -83,11 +83,7 @@ namespace RIN.WebAPI.Controllers
 
             // TODO: Check if name is blocked (reserved or contains profanity)
             // Both of these checks most likely should use new database tables that contains a list of blocked names
-            using var tx = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
-
             var isfree_result = Db.CheckIfNameIsFree(nameData.name);
-
-            tx.Complete();
 
             if (isfree_result.Result == false)
             {
