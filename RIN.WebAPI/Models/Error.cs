@@ -4,6 +4,9 @@
     {
         public static class Codes
         {
+            // Error Code to test against for if a process was successful or not
+            public static string SUCCESS                     = "SUCCESS";
+
             public static string ERR_HAVE_A_COOKIE           = "ERR_HAVE_A_COOKIE";
             public static string ERR_CHANGE_PASSWORD         = "ERR_CHANGE_PASSWORD";
             public static string ERR_INVALID_TIMESTAMP       = "ERR_INVALID_TIMESTAMP";

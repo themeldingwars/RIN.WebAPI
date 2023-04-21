@@ -13,7 +13,7 @@ namespace RIN.WebAPI.DB
         // Register a new account in the DB
         // Checks to make sure the email isn't already in use
         // Returns the account id and an error message if there is one
-        public async Task<(long id, string errorStr)> RegisterNewAccount(string email, string password, string country, DateTime birthday, string referralKey, bool emailOpin = false)
+        public async Task<(long id, string errorStr)> RegisterNewAccount(string email, string password, string country, DateTime birthday, string referralKey, bool emailOptin = false)
         {
             var uid          = Auth.GenerateUserId(email.AsSpan()).ToString();
             var secret       = Auth.GenerateSecret(email.AsSpan(), password.AsSpan()).ToString();
@@ -28,7 +28,7 @@ namespace RIN.WebAPI.DB
                 p.Add("@password_hash", passwordHash);
                 p.Add("@country", country);
                 p.Add("@birthday", birthday, DbType.Date);
-                p.Add("@email_opin", emailOpin);
+                p.Add("@email_optin", emailOptin);
 
                 p.Add("@error_text", dbType: DbType.String, direction: ParameterDirection.Output);
                 p.Add("@new_account_id", dbType: DbType.Int64, direction: ParameterDirection.Output);
@@ -47,6 +47,7 @@ namespace RIN.WebAPI.DB
             const string SELECT_SQL = @"SELECT
                 webapi.""Accounts"".account_id,
                 is_dev,
+                created_at,
                 secret,
                 character_limit,
                 true AS                                                             can_login,      
@@ -77,6 +78,28 @@ namespace RIN.WebAPI.DB
             var result = await DBCall( conn => conn.ExecuteAsync(UPDATE_SQL, new {accountId, loginTime}));
 
             return result > 0;
+        }
+
+        public async Task<AccountMTX> GetAccountMTXData(long accountId)
+        {
+            const string SELECT_SQL = @"SELECT
+                rb_balance,
+
+                (SELECT
+                price as name_change_cost
+                FROM webapi.""Costs""
+                WHERE name = 'name_change_cost')
+
+                FROM webapi.""Accounts""
+                WHERE account_id = @accountId";
+
+            var result = await DBCall(async conn =>
+            {
+                var r = await conn.QueryFirstOrDefaultAsync<AccountMTX>(SELECT_SQL, new { accountId });
+                return r;
+            });
+
+            return result;
         }
     }
 }

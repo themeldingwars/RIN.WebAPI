@@ -50,7 +50,7 @@ namespace RIN.WebAPI.Controllers
 
         protected string GetUid() => HttpUtility.UrlDecode(GetRed5Sig().UID.ToString());
 
-        protected ContentResult ReturnError(string errorCode, string errorMessage)
+        protected ContentResult ReturnError(string errorCode, string errorMessage, int statusCode = 500)
         {
             var json = JsonConvert.SerializeObject(new Error
             {
@@ -59,7 +59,16 @@ namespace RIN.WebAPI.Controllers
             });
 
             var content = Content(json, "application/json");
-            content.StatusCode = 500;
+            content.StatusCode = statusCode;
+            return content;
+        }
+
+        protected ContentResult ReturnError(Error error, int statusCode = 500)
+        {
+            var json = JsonConvert.SerializeObject(error);
+
+            var content = Content(json, "application/json");
+            content.StatusCode = statusCode;
             return content;
         }
     }

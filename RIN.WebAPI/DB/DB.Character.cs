@@ -15,7 +15,7 @@ namespace RIN.WebAPI.DB
 {
     public partial class DB
     {
-        public async Task<long> CreateNewCharacter(long accountId, string name, bool isDev, int voiceSetId, int gender, byte[] visualsBlob)
+        public async Task<long> CreateNewCharacter(long accountId, string name, bool isDev, int voiceSetId, int gender, int current_battleframe_id, byte[] visualsBlob)
         {
             var result = await DBCall(async conn =>
             {
@@ -25,6 +25,7 @@ namespace RIN.WebAPI.DB
                 p.Add("@is_dev", isDev);
                 p.Add("@voice_setid", voiceSetId);
                 p.Add("@gender", gender);
+                p.Add("@current_battleframe_id", current_battleframe_id);
                 p.Add("@visuals", visualsBlob);
 
                 p.Add("@error_text", dbType: DbType.String, direction: ParameterDirection.Output);
@@ -45,8 +46,9 @@ namespace RIN.WebAPI.DB
         public async Task<List<Character>> GetCharactersForAccount(long accountId)
         {
             const string SELECT_SQL = @"SELECT 
-                            character_guid,
+                            webapi.""Characters"".character_guid,
                             name,
+                            unique_name,
                             is_dev,
                             is_active,
                             created_at,
@@ -54,25 +56,34 @@ namespace RIN.WebAPI.DB
                             time_played_secs,
                             needs_name_change,
                             1 AS max_frame_level,
-                            76335 AS frame_sdb_id,
+                            current_battleframe_id AS frame_sdb_id,
                             1 AS current_level,
                             gender,
                             0 AS elite_rank,
                             last_seen_at,
                             visuals,
-                            race
+                            race,
+                            DeletionQueue.deleted_at,
+                            DeletionQueue.expires_in
                             FROM webapi.""Characters""
-                            WHERE account_id = @accountId";
+                            LEFT JOIN
+                            webapi.""DeletionQueue"" as DeletionQueue
+                            ON DeletionQueue.character_guid = webapi.""Characters"".character_guid
+                            WHERE webapi.""Characters"".account_id = @accountId";
 
             var results = await DBCall(async conn => conn.Query<dynamic>(SELECT_SQL, new {accountId}));
 
             var chars = new List<Character>(results.Count());
-            foreach (var result in results) {
+            foreach (var result in results)
+            {
+                long? deleted_at = result.deleted_at == null ? null : ((DateTimeOffset)result.deleted_at).ToUnixTimeSeconds();
+                long? expires_in = result.expires_in == null ? null : ((DateTimeOffset)result.expires_in).ToUnixTimeSeconds() - DateTimeOffset.Now.ToUnixTimeSeconds();
+
                 var character = new Character
                 {
                     character_guid    = result.character_guid,
                     name              = result.name,
-                    unique_name       = result.name,
+                    unique_name       = result.unique_name,
                     is_dev            = result.is_dev,
                     is_active         = result.is_active,
                     created_at        = result.created_at,
@@ -87,7 +98,8 @@ namespace RIN.WebAPI.DB
                     elite_rank        = result.elite_rank,
                     last_seen_at      = result.last_seen_at,
                     gear              = new List<GearSlot>(),
-                    expires_in        = (uint) DateTime.MaxValue.ToBinary(),
+                    expires_in        = expires_in,
+                    deleted_at        = deleted_at,
                     race              = CharacterUtil.RaceIdToString(result.race),
                     migrations        = new List<int>()
                 };
@@ -108,6 +120,117 @@ namespace RIN.WebAPI.DB
             }
 
             return chars;
+        }
+
+        // TODO: Check if character is an army commander and prevent delete process if true
+        public async Task<Error> SetPendingDeleteCharacterById(long accountId, long characterGuid)
+        {
+            // TODO: Move calls to be inside the database to make a single DB call
+
+            // Check if character exists and is owned by the account
+            const string CHAR_SELECT_SQL = @"SELECT 
+                            character_guid
+                            FROM webapi.""Characters""
+                            WHERE account_id = @accountId
+                            AND character_guid = @characterGuid";
+
+            var char_select_results = await DBCall(async conn => conn.Query<dynamic>(CHAR_SELECT_SQL, new { accountId, characterGuid }));
+
+            if (char_select_results.Count() == 0)
+            {
+                return new Error() { code = Error.Codes.ERR_CHAR_NOT_FOUND, message = "Can't find a character with that GUID" };
+            }
+
+            // Check if character is already marked for deletion
+            const string SELECT_SQL = @"SELECT 
+                            character_guid,
+                            deleted_at
+                            FROM webapi.""DeletionQueue""
+                            WHERE account_id = @accountId
+                            AND character_guid = @characterGuid";
+
+            var select_results = await DBCall(async conn => conn.Query<dynamic>(SELECT_SQL, new { accountId, characterGuid }));
+
+            if (select_results.Count() == 1)
+            {
+                return new Error() { code = Error.Codes.ERR_CHAR_DELETED, message = "Character is already marked as deleted" };
+            }
+
+            DateTime deleted_at = DateTime.Now;
+            DateTime expires_in = deleted_at.AddMonths(1);
+
+            const string INSERT_SQL = @"INSERT
+                        INTO webapi.""DeletionQueue""
+                        (character_guid, account_id, deleted_at, expires_in)
+                        VALUES (@characterGuid, @accountId, @deleted_at, @expires_in)";
+
+            var insert_results = await DBCall(async conn => conn.Query<dynamic>(INSERT_SQL, new { characterGuid, accountId, deleted_at, expires_in }));
+
+            // Uncomment to instantly delete character instead of waiting (for dev-use only)
+            /*
+            const string DELETE_SQL = @"DELETE 
+                        FROM webapi.""Characters"" 
+                        WHERE account_id = @accountId
+                        AND character_guid = @characterGuid";
+
+            var delete_results = await DBCall(async conn => conn.Query<dynamic>(DELETE_SQL, new { accountId, characterGuid }));
+            */
+
+            return new Error() { code = Error.Codes.SUCCESS };
+        }
+
+        public async Task<Error> UndeleteCharacterById(long accountId, long characterGuid)
+        {
+            // TODO: Potentially move this function into the database to reduce DB calls
+
+            // Check if character exists and is owned by the account
+            const string SELECT_SQL = @"SELECT 
+                            webapi.""Characters"".character_guid,
+                            DeletionQueue.deleted_at,
+                            DeletionQueue.expires_in
+                            FROM webapi.""Characters""
+                            LEFT JOIN
+                            webapi.""DeletionQueue"" as DeletionQueue
+                            ON DeletionQueue.character_guid = webapi.""Characters"".character_guid
+                            WHERE webapi.""Characters"".account_id = @accountId
+                            AND webapi.""Characters"".character_guid = @characterGuid";
+
+            var select_results = await DBCall(async conn => conn.Query<dynamic>(SELECT_SQL, new { accountId, characterGuid }));
+
+            if (select_results.Count() == 0)
+            {
+                return new Error() { code = Error.Codes.ERR_CHAR_NOT_FOUND, message = "Can't find a character with that GUID" };
+            }
+
+            const string DELETE_SQL = @"DELETE
+                            FROM webapi.""DeletionQueue""
+                            WHERE account_id = @accountId
+                            AND character_guid = @characterGuid";
+
+            var delete_results = await DBCall(async conn => conn.Query<dynamic>(DELETE_SQL, new { accountId, characterGuid }));
+
+            return new Error() { code = Error.Codes.SUCCESS };
+        }
+
+        public async Task<bool> CheckIfNameIsFree(string name)
+        {
+            string unique_name = name.ToUpper();
+            const string SELECT_SQL = @"SELECT 
+                            name
+                            FROM webapi.""Characters""
+                            WHERE name = @name
+                            OR unique_name = @unique_name";
+
+            var select_results = await DBCall(async conn => conn.Query<dynamic>(SELECT_SQL, new { name, unique_name }));
+
+            if (select_results.Count() == 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
     }
 }

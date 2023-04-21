@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Transactions;
 using Microsoft.AspNetCore.Mvc;
+using RIN.WebAPI.Models;
 using RIN.WebAPI.Models.ClientApi;
 using RIN.WebAPI.Models.Common;
 
@@ -15,17 +17,38 @@ namespace RIN.WebAPI.Controllers
         {
             var resp = new CharacterListResp
             {
-                is_dev           = true,
+                is_dev           = false,
                 rb_balance       = 0,
                 name_change_cost = 0,
             };
 
             var loginResult = await Db.GetLoginData(GetUid()); // temp
+            resp.is_dev     = loginResult.is_dev;
             resp.characters = await Db.GetCharactersForAccount(loginResult.account_id);
+
+            var accountMTX        = await Db.GetAccountMTXData(loginResult.account_id);
+            resp.rb_balance       = accountMTX.rb_balance;
+            resp.name_change_cost = accountMTX.name_change_cost;
 
             return resp;
         }
-        
+
+        [HttpPost("characters/{characterGuid}/undelete")]
+        public async Task<object> Undelete(long characterGuid)
+        {
+            var loginResult = await Db.GetLoginData(GetUid());
+            var restore_result = Db.UndeleteCharacterById(loginResult.account_id, characterGuid);
+
+            if (restore_result.Result.code == Error.Codes.SUCCESS)
+            {
+                return true;
+            }
+            else
+            {
+                return ReturnError(restore_result.Result, 404);
+            }
+        }
+
         private Character CreateDefaultChar(string name = "Aero")
         {
             var character = new Character

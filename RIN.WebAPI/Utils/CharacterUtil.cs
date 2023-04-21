@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using RIN.WebAPI.Models.ClientApi;
 using RIN.WebAPI.Models.Common;
 using RIN.WebAPI.Models.DB;
@@ -40,8 +41,8 @@ namespace RIN.WebAPI.Utils
         {
             var genderStr = gender switch
             {
-                0 => "female",
-                1 => "male"
+                0 => "male",
+                1 => "female"
             };
 
             return genderStr;
@@ -62,6 +63,15 @@ namespace RIN.WebAPI.Utils
             };
 
             return race;
+        }
+
+        // Game client does not allow for names to contain Control or Punctuation characters
+        // Only allows a name to contain the following characters a-z, A-Z, 0-9, and ' '
+        private static readonly Regex ValidChars = new Regex(@"^[a-zA-Z0-9 ]*$", RegexOptions.Compiled | RegexOptions.Singleline);
+
+        public static bool IsInvalidCharactersInName(string name)
+        {
+            return !ValidChars.IsMatch(name);
         }
     }
 }
