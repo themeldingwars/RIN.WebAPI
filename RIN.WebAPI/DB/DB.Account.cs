@@ -44,9 +44,7 @@ namespace RIN.WebAPI.DB
         // Get login data needed to verify a login and respond
         public async Task<LoginResult?> GetLoginData(string uid)
         {
-            const string SELECT_SQL = @"set timezone='UTC';
-
-                SELECT
+            const string SELECT_SQL = @"SELECT
                 webapi.""Accounts"".account_id,
                 is_dev,
                 created_at,
