@@ -74,7 +74,7 @@ namespace RIN.WebAPI.Controllers
                     duration      = 0,
                     expires_at    = 0
                 },
-                created_at        = DateTimeOffset.Parse(loginResult.created_at).ToUnixTimeSeconds(),
+                created_at        = new DateTimeOffset(loginResult.created_at).ToUnixTimeSeconds(),
                 character_limit   = loginResult.character_limit,
                 is_vip            = false,
                 vip_expiration    = -1,

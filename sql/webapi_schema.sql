@@ -147,8 +147,8 @@ CREATE TABLE webapi."Accounts" (
     email text NOT NULL,
     uid text NOT NULL,
     password_hash bytea NOT NULL,
-    created_at timestamp without time zone NOT NULL,
-    last_login timestamp without time zone,
+    created_at timestamp with time zone NOT NULL,
+    last_login timestamp with time zone,
     birthday date NOT NULL,
     country character(2) NOT NULL,
     secret text NOT NULL,
@@ -185,17 +185,17 @@ CREATE TABLE webapi."Characters" (
     is_dev boolean DEFAULT false NOT NULL,
     is_active boolean DEFAULT true NOT NULL,
     account_id bigint NOT NULL,
-    created_at timestamp without time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL,
     title_id integer,
     time_played_secs integer,
     needs_name_change boolean DEFAULT false NOT NULL,
     gender smallint DEFAULT 0 NOT NULL,
-    last_seen_at timestamp without time zone NOT NULL,
+    last_seen_at timestamp with time zone NOT NULL,
     race smallint NOT NULL,
     current_battleframe_id integer NOT NULL,
     visuals bytea NOT NULL,
-    deleted_at timestamp without time zone,
-    expires_in timestamp without time zone
+    deleted_at timestamp with time zone,
+    expires_in timestamp with time zone
 );
 
 
@@ -256,8 +256,8 @@ CREATE TABLE webapi."Costs" (
     name text NOT NULL,
     price integer NOT NULL,
     description text,
-    created_at timestamp without time zone NOT NULL,
-    updated_at timestamp without time zone NOT NULL
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL
 );
 
 
@@ -270,8 +270,8 @@ ALTER TABLE webapi."Costs" OWNER TO tmwadmin;
 CREATE TABLE webapi."DeletionQueue" (
     character_guid bigint NOT NULL,
     account_id bigint NOT NULL,
-    deleted_at timestamp without time zone NOT NULL,
-    expires_in timestamp without time zone NOT NULL
+    deleted_at timestamp with time zone NOT NULL,
+    expires_in timestamp with time zone NOT NULL
 );
 
 
@@ -301,8 +301,8 @@ CREATE TABLE webapi."LoginEvents" (
     description text,
     color text,
     is_active boolean DEFAULT false NOT NULL,
-    created_at timestamp without time zone NOT NULL,
-    updated_at timestamp without time zone NOT NULL
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL
 );
 
 
@@ -340,8 +340,8 @@ ALTER TABLE webapi."Purchases" ALTER COLUMN account_id ADD GENERATED ALWAYS AS I
 
 CREATE TABLE webapi."VipData" (
     account_id bigint NOT NULL,
-    start_date timestamp without time zone NOT NULL,
-    expiration_date timestamp without time zone NOT NULL
+    start_date timestamp with time zone NOT NULL,
+    expiration_date timestamp with time zone NOT NULL
 );
 
 

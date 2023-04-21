@@ -4,7 +4,7 @@ Web API server for the client
 ## Setup
 * Download and install [Docker](https://www.docker.com/get-started).
     * Local development will most likely want [Docker Desktop](https://hub.docker.com/editions/community/docker-ce-desktop-windows).
-* Run `docker compose -p RIN_WebAPI up` from the `docker` folder to start the dev stack.
+* Run `docker compose -p rin_webapi up` from the `docker` folder to start the dev stack.
 * Run [SDBBrowser](https://github.com/themeldingwars/SDBrowser) and load an `sdb` file.
 * Click `DB` and enter the connection string:
     * `User ID=tmwadmin;Password=change;Host=localhost;Port=5434;Database=TMW;`
