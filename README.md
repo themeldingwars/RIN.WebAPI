@@ -14,6 +14,7 @@ Web API server for the client
     * These are for local development only, **CHANGE THEM** if you deploy this.
 * In the DB you should see 2 schemas `sdb` and `webapi`
     * The `public` schema can be ignored.
+* To have the game connect to this server open ``Firefall.ini`` in your game install and set ``OperatorHost="https://localhost:5001"`` under the ``[Config]`` section.
 
 ## Running RIN
 * Compile the latest changes to the `RIN.WebAPI` solution.
