@@ -6,6 +6,7 @@ using System.Transactions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RIN.WebAPI.DB.SDB;
 using RIN.WebAPI.Models;
 using RIN.WebAPI.Models.ClientApi;
@@ -18,17 +19,25 @@ namespace RIN.WebAPI.Controllers
     [Route("Clientapi/api/v1")]
     public class ClientApiV1 : TmwController
     {
-        private readonly IConfiguration              Configuration;
-        private readonly ILogger<OperatorController> Logger;
-        private readonly DB.DB                       Db;
-        private readonly SDB                         Sdb;
+        private readonly ServerDefaultsSettings         ServerDefaults;
+        private readonly DevServerSettings              DevServerSettings;
+        private readonly ILogger<OperatorController>    Logger;
+        private readonly DB.DB                          Db;
+        private readonly SDB                            Sdb;
 
-        public ClientApiV1(IConfiguration configuration, ILogger<OperatorController> logger, DB.DB db, SDB sdb)
+        public ClientApiV1(
+                IOptions<ServerDefaultsSettings> serverDefaults,
+                IOptions<DevServerSettings> devServerSettings,
+                ILogger<OperatorController> logger,
+                DB.DB db,
+                SDB sdb
+            )
         {
-            Configuration = configuration;
-            Logger        = logger;
-            Db            = db;
-            Sdb           = sdb;
+            ServerDefaults    = serverDefaults.Value;
+            DevServerSettings = devServerSettings.Value;
+            Logger            = logger;
+            Db                = db;
+            Sdb               = sdb;
         }
 
         // Todo: log to db?
@@ -58,8 +67,6 @@ namespace RIN.WebAPI.Controllers
         [HttpPost("characters/validate_name")]
         public async Task<ValidateNameResp> ValidateName(ValidateNameReq nameData)
         {
-            var serverDefaults = Configuration.GetSection(ServerDefaultsSettings.NAME).Get<ServerDefaultsSettings>() ?? new ServerDefaultsSettings();
-
             var data = new ValidateNameResp
             {
                 name   = nameData.name,
@@ -68,8 +75,8 @@ namespace RIN.WebAPI.Controllers
                 reason = new List<string>()
             };
 
-            if (nameData.name.Length > serverDefaults.CharaterNameMaxLength) data.reason.Add(Error.Codes.ERR_NAME_TOO_LONG);
-            if (nameData.name.Length < serverDefaults.CharaterNameMinLength) data.reason.Add(Error.Codes.ERR_NAME_TOO_SHORT);
+            if (nameData.name.Length > ServerDefaults.CharaterNameMaxLength) data.reason.Add(Error.Codes.ERR_NAME_TOO_LONG);
+            if (nameData.name.Length < ServerDefaults.CharaterNameMinLength) data.reason.Add(Error.Codes.ERR_NAME_TOO_SHORT);
 
             if (data.reason.Count == 0 && Char.IsDigit(nameData.name[0]))
             {
@@ -166,17 +173,15 @@ namespace RIN.WebAPI.Controllers
         [HttpPost("oracle/ticket")]
         public async Task<OracleTicket> OracleTicket(OracleTicketReq req)
         {
-            var devServerSettings = Configuration.GetSection(DevServerSettings.NAME).Get<DevServerSettings>() ?? new DevServerSettings();
-
-            if (devServerSettings.EnableLocalDev) {
+            if (DevServerSettings.EnableLocalDev) {
                 var ticket = new OracleTicket
                 {
                     country           = "JP",
-                    datacenter        = devServerSettings.DevGameServerURL.Split(":").Last(),
-                    hostname          = devServerSettings.DevGameServerURL.Split(":").Last(),
-                    matrix_url        = devServerSettings.DevGameServerURL,
-                    session_id        = devServerSettings.DevSessionId,
-                    ticket            = devServerSettings.DevTicket,
+                    datacenter        = DevServerSettings.DevGameServerURL.Split(":").Last(),
+                    hostname          = DevServerSettings.DevGameServerURL.Split(":").Last(),
+                    matrix_url        = DevServerSettings.DevGameServerURL,
+                    session_id        = DevServerSettings.DevSessionId,
+                    ticket            = DevServerSettings.DevTicket,
                     operator_override = null
                 };
 

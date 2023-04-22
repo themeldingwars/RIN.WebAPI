@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RIN.WebAPI.DB;
 using RIN.WebAPI.DB.SDB;
+using RIN.WebAPI.Models;
+using RIN.WebAPI.Models.Config;
 using RIN.WebAPI.Utils;
 using Serilog;
 using Serilog.Events;
@@ -39,6 +41,12 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     //options.JsonSerializerOptions.IgnoreNullValues       = true;
     options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 });
+
+// Config sections
+builder.Services.Configure<WebApiConfigSettings>(builder.Configuration.GetSection(WebApiConfigSettings.NAME));
+builder.Services.Configure<DevServerSettings>(builder.Configuration.GetSection(DevServerSettings.NAME));
+builder.Services.Configure<ServerDefaultsSettings>(builder.Configuration.GetSection(ServerDefaultsSettings.NAME));
+builder.Services.Configure<DbConnectionSettings>(builder.Configuration.GetSection(DbConnectionSettings.NAME));
 
 // Add services to the container.
 builder.Services.AddSingleton<DB>();

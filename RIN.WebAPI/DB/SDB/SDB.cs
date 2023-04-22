@@ -5,18 +5,19 @@ using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RIN.WebAPI.Models;
+using RIN.WebAPI.Models.Config;
 using RIN.WebAPI.Models.SDB;
 
 namespace RIN.WebAPI.DB.SDB
 {
     public class SDB : DbBase
     {
-        public SDB(IConfiguration configuration, ILogger<SDB> logger) : base(configuration, logger)
+        public SDB(IOptions<DbConnectionSettings> config, ILogger<SDB> logger) : base(config, logger)
         {
-            var config = Configuration.GetSection(WebApiConfigSettings.NAME).Get<WebApiConfigSettings>();
-            ConnStr    = config.SDBConnectionStr;
-            LogDbTimes = config.LogDbCallTimes;
+            ConnStr    = config.Value.SDBConnStr;
+            LogDbTimes = config.Value.LogDbCallTimes;
         }
 
         // For the passed color ids return the light and dark colors from the warpaints table

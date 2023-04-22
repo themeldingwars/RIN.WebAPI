@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RIN.WebAPI.Models;
 using RIN.WebAPI.Models.Config;
 using RIN.WebAPI.Models.Operator;
@@ -16,14 +17,14 @@ namespace RIN.WebAPI.Controllers
     [Route("[controller]")]
     public class OperatorController : TmwController
     {
-        private readonly IConfiguration Configuration;
-        private readonly                 ILogger<OperatorController> Logger;
-        private WebApiConfigSettings    Config => Configuration.GetSection(WebApiConfigSettings.NAME).Get<WebApiConfigSettings>();
+        //private readonly IConfiguration Configuration;
+        private readonly ILogger<OperatorController>    Logger;
+        private WebApiConfigSettings                    WebConfig;
 
-        public OperatorController(IConfiguration configuration, ILogger<OperatorController> logger)
+        public OperatorController(IOptions<WebApiConfigSettings> webConfig, ILogger<OperatorController> logger)
         {
             Logger        = logger;
-            Configuration = configuration;
+            WebConfig     = webConfig.Value;
         }
         
         [HttpGet("/api/v1/products/Firefall_Beta")]
@@ -44,7 +45,7 @@ namespace RIN.WebAPI.Controllers
         [Route("/check")]
         public async Task<Hosts> Check([FromQuery] CheckReq args)
         {
-            var baseUrl     = Config.BaseURL;
+            var baseUrl     = WebConfig.BaseURL;
 
             // Todo: replace with configurable settings
             var hosts = new Hosts

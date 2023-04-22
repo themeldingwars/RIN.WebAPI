@@ -19,26 +19,55 @@ namespace RIN.WebAPI.Controllers
         [HttpPost("accounts/login")]
         public async Task<ActionResult<LoginResp>> Login()
         {
-            var serverDefaults = Configuration.GetSection(ServerDefaultsSettings.NAME).Get<ServerDefaultsSettings>() ?? new ServerDefaultsSettings();
             ContentResult invalidLoginError = ReturnError(Error.Codes.ERR_INCORRECT_USERPASS, "Login failed, check your username and password");
 
             //Logger.LogInformation($"Headers: {GetHeadersDev()}");
 
-            var uid         = HttpUtility.UrlDecode(GetRed5Sig().UID.ToString());
+            var uid = HttpUtility.UrlDecode(GetRed5Sig().UID.ToString());
             var loginResult = await Db.GetLoginData(uid);
-            
+
             // Email not found
-            if (loginResult == null) {
+            if (loginResult == null) 
                 return invalidLoginError;
-            }
-            
-            var authed      = Auth.Verify(loginResult.secret, GetRed5Sig1Str().AsSpan());
+
+            var authed = Auth.Verify(loginResult.secret, GetRed5Sig1Str().AsSpan());
 
             // Auth failed, password mismatch prob
-            if (!authed) {
+            if (!authed)
                 return invalidLoginError;
-            }
 
+            LoginEvents loginEvents = GetLoginEvents();
+
+            // Fill out the rest of the login data
+            var loginData = new LoginResp
+            {
+                account_id        = loginResult.account_id,
+                can_login         = true,
+                events            = loginEvents,
+                is_dev            = loginResult.is_dev,
+                steam_auth_prompt = false,
+                skip_precursor    = false,
+                cais_status       = new CaisStatus
+                {
+                    state      = "disabled",
+                    duration   = 0,
+                    expires_at = 0
+                },
+                created_at      = new DateTimeOffset(loginResult.created_at).ToUnixTimeSeconds(),
+                character_limit = loginResult.character_limit,
+                is_vip          = false,
+                vip_expiration  = -1,
+            };
+
+            loginData.character_limit = loginData.character_limit != -1 ? loginData.character_limit : ServerDefaults.CharaterLimitPerAccount;
+
+            await Db.UpdateLastLoginTime(loginResult.account_id);
+
+            return loginData;
+        }
+
+        private static LoginEvents GetLoginEvents()
+        {
             // Generate fixed login events
             // TODO: Store events in database table webapi.LoginEvents and pull from there
             // When events should be deactivated they should have is_active set to false
@@ -58,33 +87,7 @@ namespace RIN.WebAPI.Controllers
                 new LoginEvent(){ id = 021, name = "Chosen Offensive", description = "Devs as chosen bosses.", color = "#ff3030", is_active = true, created_at = "2014-09-19T01:47:35+00:00", updated_at = "2014-09-19T02:01:24+00:00"}
             };
             loginEvents.results.AddRange(eventList);
-
-            // Fill out the rest of the login data
-            var loginData = new LoginResp
-            {
-                account_id        = loginResult.account_id,
-                can_login         = true,
-                events            = loginEvents,
-                is_dev            = loginResult.is_dev,
-                steam_auth_prompt = false,
-                skip_precursor    = false,
-                cais_status       = new CaisStatus
-                {
-                    state         = "disabled",
-                    duration      = 0,
-                    expires_at    = 0
-                },
-                created_at        = new DateTimeOffset(loginResult.created_at).ToUnixTimeSeconds(),
-                character_limit   = loginResult.character_limit,
-                is_vip            = false,
-                vip_expiration    = -1,
-            };
-
-            loginData.character_limit = loginData.character_limit != -1 ? loginData.character_limit : serverDefaults.CharaterLimitPerAccount;
-
-            await Db.UpdateLastLoginTime(loginResult.account_id);
-            
-            return loginData;
+            return loginEvents;
         }
 
         [HttpPost("accounts")]
@@ -120,9 +123,7 @@ namespace RIN.WebAPI.Controllers
 
             bool purchase_error = false;
             if (purchase_error)
-            {
                 return ReturnError(Error.Codes.ERR_UNKNOWN, "Error completing purchase");
-            }
 
             return true;
         }

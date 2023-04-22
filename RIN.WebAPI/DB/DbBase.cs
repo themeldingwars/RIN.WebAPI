@@ -5,21 +5,24 @@ using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Npgsql;
+using RIN.WebAPI.Models;
+using RIN.WebAPI.Models.Config;
 
 namespace RIN.WebAPI.DB
 {
     public class DbBase
     {
-        protected readonly IConfiguration Configuration;
+        protected DbConnectionSettings Config;
         protected readonly ILogger    Logger;
 
         protected string ConnStr;
         protected bool   LogDbTimes;
         
-        public DbBase(IConfiguration configuration, ILogger<DbBase> logger)
+        public DbBase(IOptions<DbConnectionSettings> config, ILogger<DbBase> logger)
         {
-            Configuration = configuration;
+            Config        = config.Value;
             Logger        = logger;
         }
         

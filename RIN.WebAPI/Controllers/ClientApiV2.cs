@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using RIN.WebAPI.Models.Config;
 
 namespace RIN.WebAPI.Controllers
 {
@@ -8,15 +10,15 @@ namespace RIN.WebAPI.Controllers
     [Route("Clientapi/api/v2")]
     public partial class ClientApiV2 : TmwController
     {
-        private readonly IConfiguration              Configuration;
-        private readonly ILogger<OperatorController> Logger;
-        private readonly DB.DB                    Db;
+        private readonly ServerDefaultsSettings         ServerDefaults;
+        private readonly ILogger<OperatorController>    Logger;
+        private readonly DB.DB                          Db;
 
-        public ClientApiV2(IConfiguration configuration, ILogger<OperatorController> logger, DB.DB db)
+        public ClientApiV2(IOptions<ServerDefaultsSettings> serverDefaults, ILogger<OperatorController> logger, DB.DB db)
         {
-            Configuration = configuration;
-            Logger        = logger;
-            Db            = db;
+            ServerDefaults = serverDefaults.Value;
+            Logger         = logger;
+            Db             = db;
         }
         
     }
