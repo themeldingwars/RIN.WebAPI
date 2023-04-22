@@ -94,7 +94,8 @@ BEGIN
         RETURN;
     END IF;
 
-    insert into webapi."Characters" (name,
+    insert into webapi."Characters" (character_guid,
+                                     name,
                                      unique_name,
                                      is_dev,
                                      is_active,
@@ -108,7 +109,8 @@ BEGIN
                                      race,
                                      current_battleframe_id,
                                      visuals)
-    values (name,
+    values (webapi.create_entity_guid(254),
+      name,
             UPPER(name),
             (is_dev AND (SELECT webapi."Accounts".is_dev FROM webapi."Accounts" WHERE webapi."Accounts".account_id = "CreateNewCharacter".account_id)),
             true,
@@ -131,6 +133,37 @@ $$;
 
 
 ALTER FUNCTION webapi."CreateNewCharacter"(account_id bigint, name text, is_dev boolean, voice_setid integer, gender integer, current_battleframe_id integer, visuals bytea, OUT error_text text, OUT new_character_id bigint) OWNER TO tmwadmin;
+
+--
+-- Name: create_entity_guid(integer); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE FUNCTION webapi.create_entity_guid("Type" integer) RETURNS bigint
+    LANGUAGE plpgsql
+    AS $$DECLARE
+counter bigint;
+serverId bigint;
+timestamp bigint;
+BEGIN
+
+counter = nextval('webapi."FFUUID_Counter_Seq"'::regclass);
+serverId = (1::bigint << 56);
+timestamp = (((extract(epoch from pg_postmaster_start_time())::bigint >> 8) & x'00FFFFFF'::bigint << 32));
+RETURN serverId + timestamp + (counter << 8) + "Type";
+
+END$$;
+
+
+ALTER FUNCTION webapi.create_entity_guid("Type" integer) OWNER TO tmwadmin;
+
+--
+-- Name: FUNCTION create_entity_guid("Type" integer); Type: COMMENT; Schema: webapi; Owner: tmwadmin
+--
+
+COMMENT ON FUNCTION webapi.create_entity_guid("Type" integer) IS 'Create an entity id for example for a character, pass in a number for the type
+
+Based on https://gist.github.com/SilentCLD/881839a9f45578f1618db012fc789a71 ';
+
 
 SET default_tablespace = '';
 
@@ -202,20 +235,6 @@ CREATE TABLE webapi."Characters" (
 ALTER TABLE webapi."Characters" OWNER TO tmwadmin;
 
 --
--- Name: Characters_character_guid_seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
---
-
-ALTER TABLE webapi."Characters" ALTER COLUMN character_guid ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME webapi."Characters_character_guid_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
-
---
 -- Name: ClientEvents; Type: TABLE; Schema: webapi; Owner: tmwadmin
 --
 
@@ -278,18 +297,18 @@ CREATE TABLE webapi."DeletionQueue" (
 ALTER TABLE webapi."DeletionQueue" OWNER TO tmwadmin;
 
 --
--- Name: DeletionQueue_character_guid_seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
+-- Name: FFUUID_Counter_Seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
 --
 
-ALTER TABLE webapi."DeletionQueue" ALTER COLUMN character_guid ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME webapi."DeletionQueue_character_guid_seq"
-    START WITH 1
+CREATE SEQUENCE webapi."FFUUID_Counter_Seq"
+    START WITH 0
     INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
+    MINVALUE 0
+    MAXVALUE 16777215
+    CACHE 1;
 
+
+ALTER TABLE webapi."FFUUID_Counter_Seq" OWNER TO tmwadmin;
 
 --
 -- Name: LoginEvents; Type: TABLE; Schema: webapi; Owner: tmwadmin
