@@ -28,4 +28,4 @@ Web API server for the client
 If you have made db changes run `sql/ExportSchema.bat` and check in the `webapi_schema.sql` file to make sure the schema changes are shared.
 
 ## Tech / libs used
-* RIN is built on [.NET 6](https://dotnet.microsoft.com/en-us/download/dotnet/6.0).
+* RIN is built on [.NET 7](https://dotnet.microsoft.com/en-us/download/dotnet/7.0).
