@@ -2,6 +2,7 @@
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -80,7 +81,7 @@ namespace RIN.WebAPI.Controllers
         // Log unhandled requests to look into adding later
         [HttpGet("*")]
         [HttpPost("*")]
-        public async void CatchAll()
+        public async Task<Error> CatchAll()
         {
             var baseDir = Path.Combine(Environment.CurrentDirectory, "../", "UnhandledRoutes");
             var dir     = baseDir + Request.Path.Value?.Replace('/', '\\');
@@ -107,6 +108,9 @@ namespace RIN.WebAPI.Controllers
             }
 
             await System.IO.File.WriteAllTextAsync(filePath, sb.ToString());
+
+            Response.StatusCode = 500;
+            return new Error(Error.Codes.ERR_UNKNOWN);
         }
     }
 }

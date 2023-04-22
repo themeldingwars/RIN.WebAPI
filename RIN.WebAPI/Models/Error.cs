@@ -2,6 +2,14 @@
 {
     public class Error
     {
+        public Error() { }
+
+        public Error(string errorCode, string errorMsg = null)
+        {
+            code    = errorCode;
+            message = errorMsg;
+        }
+
         public static class Codes
         {
             // Error Code to test against for if a process was successful or not

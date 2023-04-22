@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using RIN.WebAPI.Models;
 using RIN.WebAPI.Models.ClientApi;
 using RIN.WebAPI.Models.Common;
+using RIN.WebAPI.Utils;
 
 namespace RIN.WebAPI.Controllers
 {
@@ -13,6 +14,7 @@ namespace RIN.WebAPI.Controllers
     {
         // Todo: get from db
         [HttpGet("characters/list")]
+        [R5SigAuthRequired]
         public async Task<CharacterListResp> ListCharacters()
         {
             var resp = new CharacterListResp
@@ -34,6 +36,7 @@ namespace RIN.WebAPI.Controllers
         }
 
         [HttpPost("characters/{characterGuid}/undelete")]
+        [R5SigAuthRequired]
         public async Task<object> Undelete(long characterGuid)
         {
             var loginResult = await Db.GetLoginData(GetUid());

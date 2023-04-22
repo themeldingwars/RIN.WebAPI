@@ -65,6 +65,7 @@ namespace RIN.WebAPI.Controllers
         }
 
         [HttpPost("characters/validate_name")]
+        [R5SigAuthRequired]
         public async Task<ValidateNameResp> ValidateName(ValidateNameReq nameData)
         {
             var data = new ValidateNameResp
@@ -109,6 +110,7 @@ namespace RIN.WebAPI.Controllers
 
         // TODO: Setup a database script/system to automatically delete any characters with expire_in date reached
         [HttpPost("characters/{characterGuid}/delete")]
+        [R5SigAuthRequired]
         public async Task<object> Delete(long characterGuid)
         {
             using var tx = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
@@ -129,6 +131,7 @@ namespace RIN.WebAPI.Controllers
         }
 
         [HttpPost("characters")]
+        [R5SigAuthRequired]
         public async Task<object> Characters(CreateCharacterReq reqData)
         {
             // TODO: Validate item inputs like heads etc
@@ -171,6 +174,7 @@ namespace RIN.WebAPI.Controllers
         }
 
         [HttpPost("oracle/ticket")]
+        [R5SigAuthRequired]
         public async Task<OracleTicket> OracleTicket(OracleTicketReq req)
         {
             if (DevServerSettings.EnableLocalDev) {
@@ -194,6 +198,7 @@ namespace RIN.WebAPI.Controllers
 
         // Zone List for devs
         [HttpPost("server/list")]
+        [R5SigAuthRequired]
         public async Task<object> ServerList(ServerListReq req)
         {
             var zone_list = new ZoneList();

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using RIN.WebAPI.Models;
 using RIN.WebAPI.Models.ClientApi;
 using RIN.WebAPI.Models.Config;
+using RIN.WebAPI.Utils;
 
 namespace RIN.WebAPI.Controllers
 {
@@ -91,6 +92,7 @@ namespace RIN.WebAPI.Controllers
         }
 
         [HttpPost("accounts")]
+        [R5SigAuthRequired]
         public async Task<object> CreateAccount(CreateAccountReq req)
         {
             //Logger.LogInformation("CreateAccount {@req}", req);
@@ -104,6 +106,7 @@ namespace RIN.WebAPI.Controllers
         // Lists out each locked slot along with purchase cost that the account can unlock
         // TODO: Store these in the account database to pull from
         [HttpGet("accounts/character_slots")]
+        [R5SigAuthRequired]
         public async Task<object> CharacterSlots()
         {
             var resp = new List<LockedSlots>();
@@ -117,6 +120,7 @@ namespace RIN.WebAPI.Controllers
         // If this does not return an error, the client will automatically add an additional character slot for the player
         // TODO: Handle incrementing the character_limit field in the database and subtract an entry in LockedSlots
         [HttpPost("accounts/character_slots")]
+        [R5SigAuthRequired]
         public async Task<object> CharacterSlotsUnlock(LockedSlots req)
         {
             // TODO: Verify user can afford purchase and then remove red beans from account
