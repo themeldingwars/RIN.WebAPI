@@ -30,8 +30,9 @@ namespace RIN.WebAPI.Controllers
                 IOptions<DevServerSettings> devServerSettings,
                 ILogger<OperatorController> logger,
                 DB.DB db,
-                SDB sdb
-            )
+                SDB sdb,
+                SessionManager sessionManager
+            ) : base(sessionManager)
         {
             ServerDefaults    = serverDefaults.Value;
             DevServerSettings = devServerSettings.Value;

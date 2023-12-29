@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using RIN.WebAPI.DB.SDB;
 using RIN.WebAPI.Models;
 using RIN.WebAPI.Models.SDB;
+using RIN.WebAPI.Utils;
 
 namespace RIN.WebAPI.Controllers
 {
@@ -20,7 +21,7 @@ namespace RIN.WebAPI.Controllers
         private readonly SDB            Sdb;
         private readonly DB.DB          Db;
 
-        public DevTestController(IConfiguration configuration, ILogger<DevTestController> logger, SDB sdb, DB.DB db)
+        public DevTestController(IConfiguration configuration, ILogger<DevTestController> logger, SDB sdb, DB.DB db, SessionManager sessionManager) : base(sessionManager)
         {
             Configuration = configuration;
             Logger        = logger;

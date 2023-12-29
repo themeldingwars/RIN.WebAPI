@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using System.Net.Mime;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Web;
 using FauFau.Net.Web;
@@ -8,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 using RIN.WebAPI.Models;
+using RIN.WebAPI.Models.User;
+using RIN.WebAPI.Utils;
 
 namespace RIN.WebAPI.Controllers
 {
@@ -20,6 +23,13 @@ namespace RIN.WebAPI.Controllers
         private const string RED5_IS_CENSORED_NAME     = "X-Red5-Is-Censored";
         private const string STEAM_USER_ID_NAME        = "X-Steam-Client-UserId";
         private const string STEAM_SESSION_TICKET_NAME = "X-Steam-Session-Ticket";
+
+        protected readonly SessionManager SessionManager;
+
+        public TmwController(SessionManager sessionManager)
+        {
+            SessionManager = sessionManager;
+        }
 
         protected string GetSingleHeader(string headerName)
         {
@@ -49,6 +59,43 @@ namespace RIN.WebAPI.Controllers
         }
 
         protected string GetUid() => HttpUtility.UrlDecode(GetRed5Sig().UID.ToString());
+
+        protected UserSessionData GetUserSession()
+        {
+            if (HttpContext.Items.TryGetValue(SessionManager.SESSION_KEY_PREFIX, out object sessionDataObj) && sessionDataObj is UserSessionData userSessionData)
+                return userSessionData;
+
+            var logger = HttpContext.RequestServices.GetService<ILogger<TmwController>>();
+            logger.LogWarning("Failed to get session data for {uid}", GetUid());
+            throw new TmwException(Error.Codes.ERR_UNKNOWN);
+
+            /*
+            var sessionManager            = HttpContext.RequestServices.GetService<SessionManager>();
+            var (error, sessionData, uid) = sessionManager.GetOrCreateAtuthUserSession(HttpContext.Request);
+
+            if (error != null)
+            {
+                var logger = HttpContext.RequestServices.GetService<ILogger<TmwController>>();
+                logger.LogWarning("Failed to get session data for {uid}", uid);
+                throw new TmwException(Error.Codes.ERR_UNKNOWN);
+            }
+
+            return sessionData;*/
+        }
+
+        protected void UpdateUserSession(Action<UserSessionData> updateFunc)
+        {
+            var sessionData = GetUserSession();
+            if (sessionData != null)
+            {
+                var sessionManager = HttpContext.RequestServices.GetService<SessionManager>();
+
+                sessionData.LastActiveTime = DateTime.UtcNow;
+                updateFunc(sessionData);
+
+                sessionManager.SetUserSessionData(GetUid(), sessionData);
+            }
+        }
 
         protected ContentResult ReturnError(string errorCode, string errorMessage, int statusCode = 500)
         {

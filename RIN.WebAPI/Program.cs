@@ -48,9 +48,12 @@ builder.Services.Configure<DevServerSettings>(builder.Configuration.GetSection(D
 builder.Services.Configure<ServerDefaultsSettings>(builder.Configuration.GetSection(ServerDefaultsSettings.NAME));
 builder.Services.Configure<DbConnectionSettings>(builder.Configuration.GetSection(DbConnectionSettings.NAME));
 
+builder.Services.AddDistributedMemoryCache();
+
 // Add services to the container.
 builder.Services.AddSingleton<DB>();
 builder.Services.AddSingleton<SDB>();
+builder.Services.AddSingleton<SessionManager>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

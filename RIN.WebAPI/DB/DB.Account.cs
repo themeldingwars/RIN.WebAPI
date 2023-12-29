@@ -69,6 +69,25 @@ namespace RIN.WebAPI.DB
             return result;
         }
 
+        // Get the minmial data needed to auth a user and set and setup a session
+        public async Task<AuthData?> GetAuthData(string uid)
+        {
+            const string SELECT_SQL = @"SELECT
+                    account_id,
+                    is_dev,
+                    secret
+                FROM webapi.""Accounts""
+                WHERE uid = @uid";
+
+            var result = await DBCall(async conn =>
+            {
+                var r = await conn.QueryFirstOrDefaultAsync<AuthData>(SELECT_SQL, new { uid });
+                return r;
+            });
+
+            return result;
+        }
+
         // Update the last time this account logged in successfully
         public async Task<bool> UpdateLastLoginTime(long accountId, DateTime? loginTime = null)
         {

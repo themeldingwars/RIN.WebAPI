@@ -24,11 +24,11 @@ namespace RIN.WebAPI.Controllers
                 name_change_cost = 0,
             };
 
-            var loginResult = await Db.GetLoginData(GetUid()); // temp
-            resp.is_dev     = loginResult.is_dev;
-            resp.characters = await Db.GetCharactersForAccount(loginResult.account_id);
+            var sessionData = GetUserSession();
+            resp.is_dev     = sessionData.IsDev;
+            resp.characters = await Db.GetCharactersForAccount(sessionData.AccountId);
 
-            var accountMTX        = await Db.GetAccountMTXData(loginResult.account_id);
+            var accountMTX        = await Db.GetAccountMTXData(sessionData.AccountId);
             resp.rb_balance       = accountMTX.rb_balance;
             resp.name_change_cost = accountMTX.name_change_cost;
 

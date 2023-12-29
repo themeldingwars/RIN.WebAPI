@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using RIN.WebAPI.Models;
 using RIN.WebAPI.Models.Config;
 using RIN.WebAPI.Models.Operator;
+using RIN.WebAPI.Utils;
 using Serilog;
 
 namespace RIN.WebAPI.Controllers
@@ -22,7 +23,7 @@ namespace RIN.WebAPI.Controllers
         private readonly ILogger<OperatorController>    Logger;
         private WebApiConfigSettings                    WebConfig;
 
-        public OperatorController(IOptions<WebApiConfigSettings> webConfig, ILogger<OperatorController> logger)
+        public OperatorController(IOptions<WebApiConfigSettings> webConfig, ILogger<OperatorController> logger, SessionManager sessionManager) : base(sessionManager)
         {
             Logger        = logger;
             WebConfig     = webConfig.Value;
