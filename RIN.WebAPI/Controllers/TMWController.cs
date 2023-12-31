@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
+using RIN.Core;
 using RIN.WebAPI.Models;
 
 namespace RIN.WebAPI.Controllers

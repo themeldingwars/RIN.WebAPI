@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using RIN.Core;
 using RIN.WebAPI.Models;
 using RIN.WebAPI.Models.Config;
 using RIN.WebAPI.Models.Operator;

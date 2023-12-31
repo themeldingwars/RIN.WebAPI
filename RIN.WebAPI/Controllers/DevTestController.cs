@@ -3,9 +3,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using RIN.WebAPI.DB.SDB;
-using RIN.WebAPI.Models;
-using RIN.WebAPI.Models.SDB;
+using RIN.Core.DB.SDB;
+using RIN.Core;
+using RIN.Core.SDB;
+using RIN.Core.DB;
 
 namespace RIN.WebAPI.Controllers
 {
@@ -18,9 +19,9 @@ namespace RIN.WebAPI.Controllers
         private readonly IConfiguration Configuration;
         private readonly ILogger        Logger;
         private readonly SDB            Sdb;
-        private readonly DB.DB          Db;
+        private readonly DB             Db;
 
-        public DevTestController(IConfiguration configuration, ILogger<DevTestController> logger, SDB sdb, DB.DB db)
+        public DevTestController(IConfiguration configuration, ILogger<DevTestController> logger, SDB sdb, DB db)
         {
             Configuration = configuration;
             Logger        = logger;

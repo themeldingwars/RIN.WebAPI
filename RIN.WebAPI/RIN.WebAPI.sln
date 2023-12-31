@@ -1,6 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RIN.WebAPI", "RIN.WebAPI.csproj", "{880B88A3-23CD-49D2-9691-C9B425519B45}"
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RIN.WebAPI", "RIN.WebAPI.csproj", "{880B88A3-23CD-49D2-9691-C9B425519B45}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RIN.Core", "..\RIN.Core\RIN.Core.csproj", "{3BA44CE9-BABB-4A87-B17B-1AB341C4734B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RIN.InternalAPI", "..\RIN.InternalAPI\RIN.InternalAPI.csproj", "{D6D5ED77-3412-4A00-8780-FEF73F5ACDB4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -12,5 +19,19 @@ Global
 		{880B88A3-23CD-49D2-9691-C9B425519B45}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{880B88A3-23CD-49D2-9691-C9B425519B45}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{880B88A3-23CD-49D2-9691-C9B425519B45}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3BA44CE9-BABB-4A87-B17B-1AB341C4734B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3BA44CE9-BABB-4A87-B17B-1AB341C4734B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3BA44CE9-BABB-4A87-B17B-1AB341C4734B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3BA44CE9-BABB-4A87-B17B-1AB341C4734B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D6D5ED77-3412-4A00-8780-FEF73F5ACDB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D6D5ED77-3412-4A00-8780-FEF73F5ACDB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D6D5ED77-3412-4A00-8780-FEF73F5ACDB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D6D5ED77-3412-4A00-8780-FEF73F5ACDB4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {66094CCB-34D9-4AB9-9360-409B2F215441}
 	EndGlobalSection
 EndGlobal

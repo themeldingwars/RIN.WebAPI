@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using RIN.Core.ClientApi;
+using System.Collections.Generic;
 
 namespace RIN.WebAPI.Models.ClientApi
 {

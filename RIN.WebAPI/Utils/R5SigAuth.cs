@@ -3,10 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
-using Microsoft.Net.Http.Headers;
-using RIN.WebAPI.DB;
+using RIN.Core;
+using RIN.Core.DB;
 using RIN.WebAPI.Models;
-using System.Reflection.Metadata.Ecma335;
 using System.Web;
 
 namespace RIN.WebAPI.Utils
@@ -22,9 +21,9 @@ namespace RIN.WebAPI.Utils
     public class R5SigAuth : Attribute, IAsyncAuthorizationFilter
     {
         private WebApiConfigSettings Config;
-        private DB.DB Db;
+        private DB Db;
 
-        public R5SigAuth(IOptions<WebApiConfigSettings> config, DB.DB db)
+        public R5SigAuth(IOptions<WebApiConfigSettings> config, DB db)
         {
             Config = config.Value;
             Db     = db;

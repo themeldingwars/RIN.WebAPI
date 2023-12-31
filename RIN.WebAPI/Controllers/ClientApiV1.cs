@@ -7,11 +7,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using RIN.WebAPI.DB.SDB;
-using RIN.WebAPI.Models;
+using RIN.Core.DB.SDB;
+using RIN.Core;
 using RIN.WebAPI.Models.ClientApi;
 using RIN.WebAPI.Models.Config;
 using RIN.WebAPI.Utils;
+using RIN.Core.DB;
+using RIN.Core.ClientApi;
+using RIN.Core.Utils;
 
 namespace RIN.WebAPI.Controllers
 {
@@ -22,14 +25,14 @@ namespace RIN.WebAPI.Controllers
         private readonly ServerDefaultsSettings         ServerDefaults;
         private readonly DevServerSettings              DevServerSettings;
         private readonly ILogger<OperatorController>    Logger;
-        private readonly DB.DB                          Db;
+        private readonly DB                          Db;
         private readonly SDB                            Sdb;
 
         public ClientApiV1(
                 IOptions<ServerDefaultsSettings> serverDefaults,
                 IOptions<DevServerSettings> devServerSettings,
                 ILogger<OperatorController> logger,
-                DB.DB db,
+                DB db,
                 SDB sdb
             )
         {
@@ -143,7 +146,7 @@ namespace RIN.WebAPI.Controllers
             var colors     = await Sdb.GetNewCharactersColors(reqData.eye_color_id, reqData.skin_color_id, reqData.hair_color_id);
             var genderInt  = CharacterUtil.GenderStrToNum(reqData.gender);
             var visuals    = CharacterUtil.CreateVisualsObj(colors, DEFAULT_RACE, genderInt, reqData.eye_color_id, reqData.skin_color_id, reqData.hair_color_id, reqData.voice_set, reqData.head, reqData.head_accessory_a);
-            var visualBlob = Utils.Utils.ToProtoBuffByteArray(visuals);
+            var visualBlob = MiscUtils.ToProtoBuffByteArray(visuals);
 
             var charId = await Db.CreateNewCharacter(loginResult.account_id, reqData.name, reqData.is_dev, reqData.voice_set, genderInt, reqData.start_class_id, visualBlob);
 

@@ -3,13 +3,9 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Web;
 using FauFau.Net.Web;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using RIN.WebAPI.Models;
+using RIN.Core;
 using RIN.WebAPI.Models.ClientApi;
-using RIN.WebAPI.Models.Config;
 using RIN.WebAPI.Utils;
 
 namespace RIN.WebAPI.Controllers
@@ -92,7 +88,6 @@ namespace RIN.WebAPI.Controllers
         }
 
         [HttpPost("accounts")]
-        [R5SigAuthRequired]
         public async Task<object> CreateAccount(CreateAccountReq req)
         {
             //Logger.LogInformation("CreateAccount {@req}", req);
