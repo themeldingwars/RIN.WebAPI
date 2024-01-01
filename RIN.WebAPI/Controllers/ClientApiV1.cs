@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Transactions;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -134,15 +135,15 @@ namespace RIN.WebAPI.Controllers
         // TODO: What is Value and where does it come from?
         [HttpGet("characters/{characterGuid}/data")]
         [R5SigAuthRequired]
-        public object Data(long characterGuid)
+        public async Task<CharacterDataResp> Data(long characterGuid, [FromQuery] string key, [FromQuery] string @namespace)
         {
-            string qs_key = HttpContext.Request.Query["key"].ToString();
-            string qs_ns = HttpContext.Request.Query["namespace"].ToString();
-            
+            if (string.IsNullOrEmpty(key))          key         = "76336_0";
+            if (string.IsNullOrEmpty(@namespace))   @namespace  = "bfAbiMap";
+
             var characterData = new CharacterDataResp
             {
-                Key = qs_key,
-                Namespace = qs_ns,
+                Key = key,
+                Namespace = @namespace,
                 Value = "0,1,2,3"
             };
 
