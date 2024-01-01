@@ -92,7 +92,6 @@ namespace RIN.WebAPI.Controllers
         }
 
         [HttpPost("accounts")]
-        [R5SigAuthRequired]
         public async Task<object> CreateAccount(CreateAccountReq req)
         {
             //Logger.LogInformation("CreateAccount {@req}", req);
