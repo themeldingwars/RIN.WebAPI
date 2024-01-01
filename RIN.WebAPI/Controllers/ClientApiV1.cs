@@ -130,6 +130,25 @@ namespace RIN.WebAPI.Controllers
             }
         }
 
+        // TODO: Game is pushing Key and Namespace through QueryStrings and then returning it, why?
+        // TODO: What is Value and where does it come from?
+        [HttpGet("characters/{characterGuid}/data")]
+        [R5SigAuthRequired]
+        public object Data(long characterGuid)
+        {
+            string qs_key = HttpContext.Request.Query["key"].ToString();
+            string qs_ns = HttpContext.Request.Query["namespace"].ToString();
+            
+            var characterData = new CharacterDataResp
+            {
+                Key = qs_key,
+                Namespace = qs_ns,
+                Value = "0,1,2,3"
+            };
+
+            return characterData;
+        }
+
         [HttpPost("characters")]
         [R5SigAuthRequired]
         public async Task<object> Characters(CreateCharacterReq reqData)
