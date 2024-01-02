@@ -1,0 +1,14 @@
+syntax = "proto3";
+package RIN;
+import "google/protobuf/timestamp.proto";
+
+message PingReq {
+   .google.protobuf.Timestamp SentTime = 1;
+}
+message PingResp {
+   .google.protobuf.Timestamp ClientSentTime = 1;
+   .google.protobuf.Timestamp ServerReciveTime = 2;
+}
+service GameServerAPI {
+   rpc Ping (PingReq) returns (PingResp);
+}

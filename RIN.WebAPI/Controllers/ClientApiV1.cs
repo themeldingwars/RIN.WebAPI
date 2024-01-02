@@ -140,7 +140,7 @@ namespace RIN.WebAPI.Controllers
             // TODO: Validate item inputs like heads etc
             const byte DEFAULT_RACE = 0;
 
-            using var tx          = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+            //using var tx          = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
             var       loginResult = await Db.GetLoginData(GetUid()); // temp
 
             var colors     = await Sdb.GetNewCharactersColors(reqData.eye_color_id, reqData.skin_color_id, reqData.hair_color_id);
@@ -150,7 +150,7 @@ namespace RIN.WebAPI.Controllers
 
             var charId = await Db.CreateNewCharacter(loginResult.account_id, reqData.name, reqData.is_dev, reqData.voice_set, genderInt, reqData.start_class_id, visualBlob);
 
-            tx.Complete();
+            //tx.Complete();
             
             var createData = new CreateCharacterResp
             {
