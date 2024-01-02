@@ -3,6 +3,7 @@ using Dapper;
 using ProtoBuf;
 using RIN.Core.ClientApi;
 using RIN.Core.Common;
+using RIN.Core.Models;
 using RIN.Core.Utils;
 
 namespace RIN.Core.DB
@@ -36,6 +37,7 @@ namespace RIN.Core.DB
 
             return result.Item1;
         }
+
 
         public async Task<List<Character>> GetCharactersForAccount(long accountId)
         {
@@ -114,6 +116,26 @@ namespace RIN.Core.DB
             }
 
             return chars;
+        }
+
+        public async Task<(BasicCharacterInfo, CharacterVisuals)> GetBasicCharacterAndVisualData(long charId)
+        {
+            const string SELECT_SQL = @"SELECT name, title_id, gender, race, current_battleframe_id, visuals
+	                        FROM webapi.""Characters""
+	                        WHERE character_guid = @charId";
+
+            var result = await DBCall(async conn => conn.Query<BasicCharacterInfo, byte[], (BasicCharacterInfo, CharacterVisuals)>(
+                SELECT_SQL,
+                map: (charinfo, visuals) =>
+                {
+                    var parsedVisuals = Utils.MiscUtils.FromProtoBuffByteArray<CharacterVisuals>(visuals.AsSpan()) ?? new CharacterVisuals();
+                    return (charinfo, parsedVisuals);
+                },
+                splitOn: "visuals",
+                param: new { charId })
+            .Single());
+
+            return result;
         }
 
         // TODO: Check if character is an army commander and prevent delete process if true

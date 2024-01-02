@@ -1,4 +1,7 @@
 using ProtoBuf.Grpc.Server;
+using RIN.Core.Config;
+using RIN.Core.DB.SDB;
+using RIN.Core.DB;
 using RIN.InternalAPI.Services;
 using Serilog;
 
@@ -19,6 +22,11 @@ namespace RIN.InternalAPI
             // Add services to the container.
             builder.Services.AddGrpc();
             builder.Services.AddCodeFirstGrpc();
+
+            builder.Services.Configure<DbConnectionSettings>(builder.Configuration.GetSection(DbConnectionSettings.NAME));
+
+            builder.Services.AddSingleton<DB>();
+            builder.Services.AddSingleton<SDB>();
 
             var app = builder.Build();
             app.UseSerilogRequestLogging();

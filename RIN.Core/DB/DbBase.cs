@@ -35,7 +35,7 @@ namespace RIN.Core.DB
                 return -1;
             }
         }
-        
+
         public async Task<T> DBCall<T>(Func<NpgsqlConnection, Task<T>> context, Action<Exception> onError = null!, [CallerMemberName] string functionName = null)
         {
             try {

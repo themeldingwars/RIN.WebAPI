@@ -5,6 +5,7 @@ using RIN.Core.Common;
 
 namespace RIN.Core.DB
 {
+    [ProtoContract]
     public class PlayerBattleframeVisuals
     {
         [ProtoMember(1)] public List<WebId> decals            { get; set; }
