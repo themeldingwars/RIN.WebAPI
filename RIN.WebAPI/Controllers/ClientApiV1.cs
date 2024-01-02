@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Transactions;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -128,6 +129,22 @@ namespace RIN.WebAPI.Controllers
             {
                 return ReturnError(delete_result.Result, 404);
             }
+        }
+
+        // TODO: Game is pushing Key and Namespace through QueryStrings and then returning it, why?
+        // TODO: What is Value and where does it come from?
+        [HttpGet("characters/{characterGuid}/data")]
+        [R5SigAuthRequired]
+        public async Task<CharacterDataResp> Data(long characterGuid, [FromQuery] string key = "76336_0", [FromQuery] string @namespace = "bfAbiMap")
+        {
+            var characterData = new CharacterDataResp
+            {
+                Key = key,
+                Namespace = @namespace,
+                Value = "0,1,2,3"
+            };
+
+            return characterData;
         }
 
         [HttpPost("characters")]
