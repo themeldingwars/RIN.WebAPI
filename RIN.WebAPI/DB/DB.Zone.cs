@@ -33,49 +33,20 @@ namespace RIN.WebAPI.DB
                     challenge_enabled,
                     challenge_min_players_per_team,
                     challenge_max_players_per_team,
-                    images
+                    images AS imageStr
                 FROM webapi.""ZoneSettings""
                 WHERE is_active = True";
 
-            var zone_settings = await DBCall(async conn => conn.Query<ZoneSettings>(SELECT_SQL));
-
-            var zones = new List<ZoneSettingsResp>(zone_settings.Count());
-            foreach (var setting in zone_settings)
-            {
-                var images = JsonConvert.DeserializeObject<ZoneImages>(setting.images);
-
-                var zoneSettings = new ZoneSettingsResp
+            var zone_settings = await DBCall(async conn => conn.Query<ZoneSettingsResp, string, ZoneSettingsResp>(SELECT_SQL,
+                (settings, imgStr) =>
                 {
-                    id = setting.id,
-                    zone_id = setting.zone_id,
-                    mission_id = setting.mission_id,
-                    gametype = setting.gametype,
-                    instance_type_pool = setting.instance_type_pool,
-                    is_preview_zone = setting.is_preview_zone,
-                    displayed_name = setting.displayed_name,
-                    displayed_desc = setting.displayed_desc,
-                    description = setting.description,
-                    displayed_gametype = setting.displayed_gametype,
-                    cert_required = setting.cert_required,
-                    xp_bonus = setting.xp_bonus,
-                    sort_order = setting.sort_order,
-                    rotation_priority = setting.rotation_priority,
-                    skip_matchmaking = setting.skip_matchmaking,
-                    queueing_enabled = setting.queueing_enabled,
-                    team_count = setting.team_count,
-                    min_players_per_team = setting.min_players_per_team,
-                    max_players_per_team = setting.max_players_per_team,
-                    min_players_accept_per_team = setting.min_players_accept_per_team,
-                    challenge_enabled = setting.challenge_enabled,
-                    challenge_min_players_per_team = setting.challenge_min_players_per_team,
-                    challenge_max_players_per_team = setting.challenge_max_players_per_team,
-                    images = images
-                };
+                    var images = JsonConvert.DeserializeObject<ZoneImages>(imgStr);
+                    settings.images = images;
+                    return settings;
+                },
+                splitOn: "imageStr").ToList());
 
-                zones.Add(zoneSettings);
-            }
-
-            return zones;
+            return zone_settings;
         }
 
         public async Task<List<ZoneCertRequirements>> GetZoneCertRequirements(uint zone_setting_id)
@@ -90,7 +61,7 @@ namespace RIN.WebAPI.DB
                 FROM webapi.""ZoneCertificates""
                 WHERE zone_setting_id = @zone_setting_id";
 
-            var certificates = (List<ZoneCertRequirements>)await DBCall(async conn => conn.Query<ZoneCertRequirements>(SELECT_SQL_CERT));
+            var certificates = await DBCall(async conn => conn.Query<ZoneCertRequirements>(SELECT_SQL_CERT).ToList());
 
             return certificates;
         }
@@ -113,7 +84,7 @@ namespace RIN.WebAPI.DB
                 FROM webapi.""ZoneDifficulty""
                 WHERE zone_setting_id = @zone_setting_id";
 
-            var difficulty = (List<ZoneDifficultyLevels>)await DBCall(async conn => conn.Query<ZoneDifficultyLevels>(SELECT_SQL_DIFFICULTY));
+            var difficulty = await DBCall(async conn => conn.Query<ZoneDifficultyLevels>(SELECT_SQL_DIFFICULTY).ToList());
 
             return difficulty;
         }
