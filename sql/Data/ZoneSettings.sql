@@ -24,7 +24,7 @@ SET row_security = off;
 -- Data for Name: ZoneSettings; Type: TABLE DATA; Schema: webapi; Owner: tmwadmin
 --
 
-INSERT INTO webapi."ZoneSettings" VALUES (1, 833, 507, 'campaign', 'pve', false, 'MATCH_MAP_BLACKWATER_ANOMALY', 'MATCH_MAP_BLACKWATER_ANOMALY_DESC', 'Chapter 1: Blackwater Anomaly', 'MATCH_MAP_BLACKWATER_ANOMALY', false, 0, 6, 1, false, true, 1, 1, 5, 0, false, 0, 0, false, '{"thumbnail":"/assets/zones/blackwater_anomaly/tbn.png","screenshot":["/assets/zones/blackwater_anomaly/01.png","/assets/zones/blackwater_anomaly/02.png","/assets/zones/blackwater_anomaly/03.png"],"lfg":"/assets/zones/placeholder-ss.png"}');
+INSERT INTO webapi."ZoneSettings" VALUES (1, 833, 507, 'campaign', 'pve', false, 'MATCH_MAP_BLACKWATER_ANOMALY', 'MATCH_MAP_BLACKWATER_ANOMALY_DESC', 'Chapter 1: Blackwater Anomaly', 'MATCH_MAP_BLACKWATER_ANOMALY', false, 0, 6, 1, false, true, 1, 1, 5, 0, false, 0, 0, true, '{"thumbnail":"/assets/zones/blackwater_anomaly/tbn.png","screenshot":["/assets/zones/blackwater_anomaly/01.png","/assets/zones/blackwater_anomaly/02.png","/assets/zones/blackwater_anomaly/03.png"],"lfg":"/assets/zones/placeholder-ss.png"}');
 
 
 --
