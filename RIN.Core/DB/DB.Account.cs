@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Net.Security;
 using System.Threading.Tasks;
 using Dapper;
 using FauFau.Net.Web;

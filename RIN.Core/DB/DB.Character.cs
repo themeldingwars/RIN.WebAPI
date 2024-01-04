@@ -38,7 +38,6 @@ namespace RIN.Core.DB
             return result.Item1;
         }
 
-
         public async Task<List<Character>> GetCharactersForAccount(long accountId)
         {
             const string SELECT_SQL = @"SELECT 

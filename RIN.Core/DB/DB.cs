@@ -10,6 +10,8 @@ namespace RIN.Core.DB
         {
             ConnStr    = config.Value.DBConnStr;
             LogDbTimes = config.Value.LogDbCallTimes;
+
+            AppContext.SetSwitch("Npgsql.EnableStoredProcedureCompatMode", true);
         }
     }
 }
