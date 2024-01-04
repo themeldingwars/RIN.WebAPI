@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using RIN.WebAPI.Models.ClientApi;
 using RIN.WebAPI.Utils;
+using System.Runtime.ConstrainedExecution;
 using System.Text.Json.Serialization;
 
 namespace RIN.WebAPI.Controllers
@@ -18,10 +19,12 @@ namespace RIN.WebAPI.Controllers
             var zoneSettings = new List<ZoneSettingsResp>(zones.Count());
             foreach (var zone in zones)
             {
-                zone.reward_winner = new ZoneReward { };
-                zone.reward_loser = new ZoneReward { };
-                zone.cert_requirements = await Db.GetZoneCertRequirements(zone.zone_id);
-                zone.difficulty_levels = await Db.GetZoneDifficultyLevels(zone.zone_id);
+                var certs = Db.GetZoneCertRequirements(zone.zone_id);
+                var diffLevels = Db.GetZoneDifficultyLevels(zone.zone_id);
+                await Task.WhenAll(certs, diffLevels);
+
+                zone.cert_requirements = certs.Result;
+                zone.difficulty_levels = diffLevels.Result;
 
                 zoneSettings.Add(zone);
             }
