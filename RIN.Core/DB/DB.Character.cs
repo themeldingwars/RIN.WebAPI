@@ -122,7 +122,7 @@ namespace RIN.Core.DB
 
         public async Task<(BasicCharacterInfo, CharacterVisuals)> GetBasicCharacterAndVisualData(long charId)
         {
-            const string SELECT_SQL = @"SELECT name, title_id, gender, race, current_battleframe_id, visuals
+            const string SELECT_SQL = @"SELECT name, title_id, gender, race, current_battleframe_guid, visuals
 	                        FROM webapi.""Characters""
 	                        WHERE character_guid = @charId";
 

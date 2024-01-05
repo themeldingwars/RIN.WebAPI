@@ -14,6 +14,6 @@ namespace RIN.Core.Models
         [ProtoMember(2)] public byte Race { get; set; }
         [ProtoMember(3)] public byte Gender { get; set; }
         [ProtoMember(4)] public int TitleId { get; set; }
-        [ProtoMember(5)] public uint CurrentBattleframeId { get; set; }
+        [ProtoMember(5)] public long CurrentBattleframeId { get; set; }
     }
 }
