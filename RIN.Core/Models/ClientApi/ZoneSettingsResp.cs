@@ -1,6 +1,6 @@
-﻿namespace RIN.WebAPI.Models.ClientApi
+﻿namespace RIN.Core.Models.ClientApi
 {
-    public class ZoneSettingsResp
+    public class ZoneSettings
     {
         public uint id { get; set; }
         public string description { get; set; }

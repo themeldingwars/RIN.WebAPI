@@ -1,13 +1,13 @@
 ﻿using Dapper;
 using Newtonsoft.Json;
-using RIN.WebAPI.Models.ClientApi;
-using RIN.WebAPI.Models.DB;
+using RIN.Core.Models;
+using RIN.Core.Models.ClientApi;
 
-namespace RIN.WebAPI.DB
+namespace RIN.Core.DB
 {
     public partial class DB
     {
-        public async Task<List<ZoneSettingsResp>> GetZoneSettings()
+        public async Task<List<ZoneSettings>> GetZoneSettings()
         {
             const string SELECT_SQL = @"SELECT 
                     id,
@@ -37,7 +37,7 @@ namespace RIN.WebAPI.DB
                 FROM webapi.""ZoneSettings""
                 WHERE is_active = True";
 
-            var zone_settings = await DBCall(async conn => conn.Query<ZoneSettingsResp, string, ZoneSettingsResp>(SELECT_SQL,
+            var zone_settings = await DBCall(async conn => conn.Query<ZoneSettings, string, ZoneSettings>(SELECT_SQL,
                 (settings, imgStr) =>
                 {
                     var images = JsonConvert.DeserializeObject<ZoneImages>(imgStr);

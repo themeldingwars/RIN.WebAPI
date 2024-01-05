@@ -560,3 +560,185 @@ ALTER TABLE ONLY webapi."VipData"
 -- PostgreSQL database dump complete
 --
 
+--
+-- Name: ZoneCertificates; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."ZoneCertificates" (
+    id integer NOT NULL,
+    cert_id smallint NOT NULL,
+    zone_setting_id smallint NOT NULL,
+    authorize_position text NOT NULL,
+    difficulty_key text,
+    presence text NOT NULL
+);
+
+
+ALTER TABLE webapi."ZoneCertificates" OWNER TO tmwadmin;
+
+--
+-- Name: ZoneCertificates_id_seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE SEQUENCE webapi."ZoneCertificates_id_seq"
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE webapi."ZoneCertificates_id_seq" OWNER TO tmwadmin;
+
+--
+-- Name: ZoneCertificates_id_seq; Type: SEQUENCE OWNED BY; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER SEQUENCE webapi."ZoneCertificates_id_seq" OWNED BY webapi."ZoneCertificates".id;
+
+
+--
+-- Name: ZoneDifficulty; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."ZoneDifficulty" (
+    id integer NOT NULL,
+    zone_setting_id smallint NOT NULL,
+    difficulty_key text NOT NULL,
+    ui_string text NOT NULL,
+    display_level smallint NOT NULL,
+    min_level smallint NOT NULL,
+    max_suggested_level smallint NOT NULL,
+    min_players smallint NOT NULL,
+    max_players smallint NOT NULL,
+    min_players_accept smallint NOT NULL,
+    group_min_players smallint NOT NULL,
+    group_max_players smallint NOT NULL
+);
+
+
+ALTER TABLE webapi."ZoneDifficulty" OWNER TO tmwadmin;
+
+--
+-- Name: ZoneDifficulty_id_seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE SEQUENCE webapi."ZoneDifficulty_id_seq"
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE webapi."ZoneDifficulty_id_seq" OWNER TO tmwadmin;
+
+--
+-- Name: ZoneDifficulty_id_seq; Type: SEQUENCE OWNED BY; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER SEQUENCE webapi."ZoneDifficulty_id_seq" OWNED BY webapi."ZoneDifficulty".id;
+
+
+--
+-- Name: ZoneSettings; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."ZoneSettings" (
+    id integer NOT NULL,
+    zone_id integer DEFAULT 0 NOT NULL,
+    mission_id smallint DEFAULT 0 NOT NULL,
+    gametype text NOT NULL,
+    instance_type_pool text NOT NULL,
+    is_preview_zone boolean DEFAULT false NOT NULL,
+    displayed_name text NOT NULL,
+    displayed_desc text NOT NULL,
+    description text NOT NULL,
+    displayed_gametype text NOT NULL,
+    cert_required boolean DEFAULT false NOT NULL,
+    xp_bonus smallint DEFAULT 0 NOT NULL,
+    sort_order smallint,
+    rotation_priority smallint DEFAULT 1 NOT NULL,
+    skip_matchmaking boolean DEFAULT true NOT NULL,
+    queueing_enabled boolean DEFAULT true NOT NULL,
+    team_count smallint DEFAULT 1 NOT NULL,
+    min_players_per_team smallint DEFAULT 1 NOT NULL,
+    max_players_per_team smallint DEFAULT 5 NOT NULL,
+    min_players_accept_per_team smallint DEFAULT 0 NOT NULL,
+    challenge_enabled boolean DEFAULT false NOT NULL,
+    challenge_min_players_per_team smallint DEFAULT 0 NOT NULL,
+    challenge_max_players_per_team smallint DEFAULT 0 NOT NULL,
+    is_active boolean DEFAULT false NOT NULL,
+    images text
+);
+
+
+ALTER TABLE webapi."ZoneSettings" OWNER TO tmwadmin;
+
+--
+-- Name: ZoneSettings_id_seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE SEQUENCE webapi."ZoneSettings_id_seq"
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE webapi."ZoneSettings_id_seq" OWNER TO tmwadmin;
+
+--
+-- Name: ZoneSettings_id_seq; Type: SEQUENCE OWNED BY; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER SEQUENCE webapi."ZoneSettings_id_seq" OWNED BY webapi."ZoneSettings".id;
+
+
+--
+-- Name: ZoneCertificates id; Type: DEFAULT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."ZoneCertificates" ALTER COLUMN id SET DEFAULT nextval('webapi."ZoneCertificates_id_seq"'::regclass);
+
+
+--
+-- Name: ZoneDifficulty id; Type: DEFAULT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."ZoneDifficulty" ALTER COLUMN id SET DEFAULT nextval('webapi."ZoneDifficulty_id_seq"'::regclass);
+
+
+--
+-- Name: ZoneSettings id; Type: DEFAULT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."ZoneSettings" ALTER COLUMN id SET DEFAULT nextval('webapi."ZoneSettings_id_seq"'::regclass);
+
+--
+-- Name: ZoneCertificates ZoneCertificates_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."ZoneCertificates"
+    ADD CONSTRAINT "ZoneCertificates_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: ZoneDifficulty ZoneDifficulty_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."ZoneDifficulty"
+    ADD CONSTRAINT "ZoneDifficulty_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: ZoneSettings ZoneSettings_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."ZoneSettings"
+    ADD CONSTRAINT "ZoneSettings_pkey" PRIMARY KEY (id);
+

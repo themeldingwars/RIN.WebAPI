@@ -1,4 +1,4 @@
-﻿namespace RIN.WebAPI.Models.ClientApi
+﻿namespace RIN.Core.Models
 {
     public class ZoneReward
     {
