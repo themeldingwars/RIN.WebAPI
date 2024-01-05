@@ -2,7 +2,7 @@ version: "3.9"  # optional since v1.27.0
 services:
   db:
     container_name: RIN.WebAPI.DB
-    image: postgres:alpine
+    image: postgres:14.1-alpine
     restart: always
     ports:
       - 5434:5432
