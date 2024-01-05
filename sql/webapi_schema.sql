@@ -491,7 +491,7 @@ ALTER SEQUENCE webapi."ZoneDifficulty_id_seq" OWNED BY webapi."ZoneDifficulty".i
 CREATE TABLE webapi."ZoneSettings" (
     id integer NOT NULL,
     zone_id integer DEFAULT 0 NOT NULL,
-    mission_id smallint DEFAULT 0 NOT NULL,
+    mission_id smallint,
     gametype text NOT NULL,
     instance_type_pool text NOT NULL,
     is_preview_zone boolean DEFAULT false NOT NULL,
