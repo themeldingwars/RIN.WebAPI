@@ -169,7 +169,7 @@ namespace RIN.WebAPI.Controllers
                     {
                         id = 0
                     },
-                    decals      = new List<WebId>(),
+                    //decals      = new List<WebId>(),
                     warpaint_id = 143225,
                     warpaint = new List<uint>()
                         {4216738474, 0, 4216717312, 418250752, 1525350400, 4162844703, 4162844703},

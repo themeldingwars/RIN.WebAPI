@@ -80,7 +80,7 @@ COMMENT ON FUNCTION webapi."CreateNewAccount"(email text, country text, birthday
 -- Name: CreateNewCharacter(bigint, text, boolean, integer, integer, integer, bytea); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
 --
 
-CREATE FUNCTION webapi."CreateNewCharacter"(account_id bigint, name text, is_dev boolean, voice_setid integer, gender integer, current_battleframe_id integer, visuals bytea, OUT error_text text, OUT new_character_id bigint) RETURNS record
+CREATE FUNCTION webapi."CreateNewCharacter"(account_id bigint, name text, is_dev boolean, voice_setid integer, gender integer, visuals bytea, OUT error_text text, OUT new_character_id bigint) RETURNS record
     LANGUAGE plpgsql
     AS $$
 declare
@@ -107,7 +107,6 @@ BEGIN
                                      gender,
                                      last_seen_at,
                                      race,
-                                     current_battleframe_id,
                                      visuals)
     values (webapi.create_entity_guid(254),
       name,
@@ -122,7 +121,6 @@ BEGIN
             gender,
             current_timestamp,
             0,
-            current_battleframe_id,
             visuals)
     RETURNING character_guid INTO new_character_id;
 
@@ -256,10 +254,10 @@ CREATE TABLE webapi."Characters" (
     gender smallint DEFAULT 0 NOT NULL,
     last_seen_at timestamp with time zone NOT NULL,
     race smallint NOT NULL,
-    current_battleframe_id integer NOT NULL,
     visuals bytea NOT NULL,
     deleted_at timestamp with time zone,
-    expires_in timestamp with time zone
+    expires_in timestamp with time zone,
+    current_battleframe_guid bigint
 );
 
 

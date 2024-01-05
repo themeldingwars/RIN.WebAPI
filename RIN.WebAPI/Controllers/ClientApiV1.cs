@@ -157,20 +157,22 @@ namespace RIN.WebAPI.Controllers
             // TODO: Validate item inputs like heads etc
             const byte DEFAULT_RACE = 0;
 
-            //using var tx          = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
-            var       loginResult = await Db.GetLoginData(GetUid()); // temp
+            var colors      = await Sdb.GetNewCharactersColors(reqData.eye_color_id, reqData.skin_color_id, reqData.hair_color_id);
+            var loginResult = await Db.GetLoginData(GetUid()); // temp
 
-            var colors     = await Sdb.GetNewCharactersColors(reqData.eye_color_id, reqData.skin_color_id, reqData.hair_color_id);
             var genderInt  = CharacterUtil.GenderStrToNum(reqData.gender);
             var visuals    = CharacterUtil.CreateVisualsObj(colors, DEFAULT_RACE, genderInt, reqData.eye_color_id, reqData.skin_color_id, reqData.hair_color_id, reqData.voice_set, reqData.head, reqData.head_accessory_a);
             var visualBlob = MiscUtils.ToProtoBuffByteArray(visuals);
 
-            var charId = await Db.CreateNewCharacter(loginResult.account_id, reqData.name, reqData.is_dev, reqData.voice_set, genderInt, reqData.start_class_id, visualBlob);
+            using (var tx = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+                var charId    = await Db.CreateNewCharacter(loginResult.account_id, reqData.name, reqData.is_dev, reqData.voice_set, genderInt, visualBlob);
+                var bfVisuals = PlayerBattleframeVisuals.CreateDefault();
+                var bfId      = await Db.CreateBattleframeLoadout(charId, reqData.start_class_id, bfVisuals);
+                await Db.SetCharacterCurrentBattleframe(charId, bfId.Value);
 
-            var bfVisuals = PlayerBattleframeVisuals.CreateDefault();
-            await Db.CreateBattleframeLoadout(charId, reqData.start_class_id, bfVisuals);
-
-            //tx.Complete();
+                tx.Complete();
+            }
 
             var createData = new CreateCharacterResp
             {

@@ -10,7 +10,7 @@ namespace RIN.Core.DB
 {
     public partial class DB
     {
-        public async Task<long> CreateNewCharacter(long accountId, string name, bool isDev, int voiceSetId, int gender, int current_battleframe_id, byte[] visualsBlob)
+        public async Task<long> CreateNewCharacter(long accountId, string name, bool isDev, int voiceSetId, int gender, byte[] visualsBlob)
         {
             var result = await DBCall(async conn =>
             {
@@ -20,7 +20,6 @@ namespace RIN.Core.DB
                 p.Add("@is_dev", isDev);
                 p.Add("@voice_setid", voiceSetId);
                 p.Add("@gender", gender);
-                p.Add("@current_battleframe_id", current_battleframe_id);
                 p.Add("@visuals", visualsBlob);
 
                 p.Add("@error_text", dbType: DbType.String, direction: ParameterDirection.Output);
@@ -41,30 +40,34 @@ namespace RIN.Core.DB
         public async Task<List<Character>> GetCharactersForAccount(long accountId)
         {
             const string SELECT_SQL = @"SELECT 
-                            webapi.""Characters"".character_guid,
-                            name,
-                            unique_name,
-                            is_dev,
-                            is_active,
-                            created_at,
-                            title_id,
-                            time_played_secs,
-                            needs_name_change,
-                            1 AS max_frame_level,
-                            current_battleframe_id AS frame_sdb_id,
-                            1 AS current_level,
-                            gender,
-                            0 AS elite_rank,
-                            last_seen_at,
-                            visuals,
-                            race,
-                            DeletionQueue.deleted_at,
-                            DeletionQueue.expires_in
-                            FROM webapi.""Characters""
-                            LEFT JOIN
-                            webapi.""DeletionQueue"" as DeletionQueue
-                            ON DeletionQueue.character_guid = webapi.""Characters"".character_guid
-                            WHERE webapi.""Characters"".account_id = @accountId";
+		                        webapi.""Characters"".character_guid,
+		                        name,
+		                        unique_name,
+		                        is_dev,
+		                        is_active,
+		                        created_at,
+		                        title_id,
+		                        time_played_secs,
+		                        needs_name_change,
+		                        (SELECT MAX(level) FROM webapi.""Battleframes"" WHERE character_guid = webapi.""Characters"".character_guid) AS max_frame_level,
+		                        Battleframes.battleframe_sdb_id AS frame_sdb_id,
+		                        Battleframes.level AS current_level,
+		                        gender,
+		                        0 AS elite_rank,
+		                        last_seen_at,
+		                        webapi.""Characters"".visuals,
+		                        race,
+		                        DeletionQueue.deleted_at,
+		                        DeletionQueue.expires_in
+		                        FROM webapi.""Characters""
+				                        LEFT JOIN
+					                        webapi.""DeletionQueue"" as DeletionQueue
+						                        ON DeletionQueue.character_guid = webapi.""Characters"".character_guid
+						
+				                        LEFT JOIN
+					                        webapi.""Battleframes"" as Battleframes
+						                        ON Battleframes.id = webapi.""Characters"".current_battleframe_guid
+		                        WHERE webapi.""Characters"".account_id = @accountId";
 
             var results = await DBCall(async conn => conn.Query<dynamic>(SELECT_SQL, new {accountId}));
 
@@ -135,6 +138,30 @@ namespace RIN.Core.DB
             .Single());
 
             return result;
+        }
+
+        public async Task<bool> UpdateCharacterVisuals(long charId, CharacterVisuals visuals)
+        {
+            const string UPDATE_SQL = @"UPDATE webapi.""Characters""
+	                            SET gender = @gender, race = @race, visuals = @visualsBlob
+	                            WHERE character_guid = @charId;";
+
+            var visualsBlob = Utils.MiscUtils.ToProtoBuffByteArray(visuals);
+            var result = await DBCall(conn => conn.ExecuteAsync(UPDATE_SQL, new { charId, visuals.gender, visuals.race, visualsBlob }));
+
+            return result > 0;
+        }
+
+        // Set this charaters currently equiped battleframe
+        public async Task<bool> SetCharacterCurrentBattleframe(long charId, long bfId)
+        {
+            const string UPDATE_SQL = @"UPDATE webapi.""Characters""
+	                            SET current_battleframe_guid = @bfId
+	                            WHERE character_guid = @charId;";
+
+            var result = await DBCall(conn => conn.ExecuteAsync(UPDATE_SQL, new { charId, bfId }));
+
+            return result > 0;
         }
 
         // TODO: Check if character is an army commander and prevent delete process if true

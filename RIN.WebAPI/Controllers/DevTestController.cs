@@ -54,6 +54,25 @@ namespace RIN.WebAPI.Controllers
         {
             throw new TmwException(Error.Codes.ERR_NAME_IN_USE, "Test exception with a custom message");
         }
+
+        [HttpPost("UpdateCharaterAperance")]
+        public async Task UpdateCharaterAperance(long charId, CharacterVisuals visuals)
+        {
+            var result = Db.UpdateCharacterVisuals(charId, visuals);
+        }
+
+        [HttpPost("UpdateBattleframeAperance")]
+        public async Task UpdateBattleframeAperance(long bfId, PlayerBattleframeVisuals visuals)
+        {
+            var result = Db.UpdateBattleframeVisuals(bfId, visuals);
+        }
+
+        [HttpPost("AddBattleframeLoadout")]
+        public async Task AddBattleframeLoadout(long charId, int battleframe_sdb_id, PlayerBattleframeVisuals? visuals)
+        {
+            visuals = visuals ?? PlayerBattleframeVisuals.CreateDefault();
+            var result = Db.CreateBattleframeLoadout(charId, battleframe_sdb_id, visuals);
+        }
     }
 
 #endif

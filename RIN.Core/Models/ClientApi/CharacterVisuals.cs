@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using ProtoBuf;
 using RIN.Core.Common;
+using RIN.Core.Models.ClientApi;
 
 namespace RIN.Core.ClientApi
 {
@@ -24,7 +25,7 @@ namespace RIN.Core.ClientApi
         [ProtoMember(15)] public WebIdValueColorId     facial_hair       { get; set; }
         [ProtoMember(16)] public WebId                 glider            { get; set; }
         [ProtoMember(17)] public WebId                 vehicle           { get; set; }
-        [ProtoMember(18)] public List<WebId>           decals            { get; set; }
+        [ProtoMember(18)] public List<WebDecal>        decals            { get; set; }
         [ProtoMember(19)] public int                   warpaint_id       { get; set; }
         [ProtoMember(20)] public List<uint>            warpaint          { get; set; }
         [ProtoMember(21)] public List<int>             decalgradients    { get; set; }
