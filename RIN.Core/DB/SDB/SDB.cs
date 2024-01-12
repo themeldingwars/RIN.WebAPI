@@ -38,5 +38,16 @@ namespace RIN.Core.DB.SDB
 
             return result.FirstOrDefault();
         }
+
+        public async Task<IEnumerable<CosmeticInfo>> GetOrnamentsInfoList()
+        {
+            const string SELECT_SQL = @"SELECT ornaments.id, lang.english AS lang_name, display_flags, ""Usage"" AS ""usage""
+                FROM sdb.""dbvisualrecords::OrnamentsMapGroups"" AS ornaments
+                LEFT JOIN sdb.""dblocalization::LocalizedText"" AS lang ON lang.id = ""localizedNameId""";
+
+            var result = await DBCall(conn => conn.QueryAsync<CosmeticInfo>(SELECT_SQL, new { }));
+
+            return result;
+        }
     }
 }

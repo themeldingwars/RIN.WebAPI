@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using RIN.Core.Common;
 using RIN.Core.DB;
+using RIN.Core.Models;
 using RIN.Core.SDB;
 
 namespace RIN.Core.Utils
@@ -69,6 +70,58 @@ namespace RIN.Core.Utils
         public static bool IsInvalidCharactersInName(string name)
         {
             return !ValidChars.IsMatch(name);
+        }
+
+        public static CharacterVisuals UpdateCharacterVisualsFromGarage(CharacterVisuals cv, PlayerVisualLoadout updates, NewCharaterColors colors)
+        {
+            cv.race             = updates.race;
+            cv.gender           = updates.gender;
+            cv.voice_set.id     = updates.voice_set_id;
+            cv.head.id          = updates.head_id;
+            cv.lip_color.id     = updates.lip_color_id;
+            cv.facial_hair.id   = updates.facial_hair_color_id;
+            cv.eyes.id          = updates.eye_id;
+
+            if (cv.skin_color.id != updates.skin_color_id)
+            {
+                cv.skin_color.id = updates.skin_color_id;
+                cv.skin_color.value.color = colors.SkinColor;
+            }
+
+            if (cv.eye_color.id != updates.eye_color_id)
+            {
+                cv.eye_color.id = updates.eye_color_id;
+                cv.eye_color.value.color = colors.SkinColor;
+            }
+
+            if (cv.hair.id != updates.hair_id)
+            {
+                cv.hair.id = updates.hair_id;
+            }
+
+            if (cv.facial_hair.id != updates.facial_hair_id)
+            {
+                cv.facial_hair.id = updates.facial_hair_id;
+            }
+
+            if (cv.hair_color.id != updates.hair_color_id)
+            {
+                cv.hair_color.id                  = updates.hair_color_id;
+                cv.hair_color.value.color         = colors.HairColor;
+                cv.hair.color.value               = colors.HairColor;
+
+                cv.facial_hair.id                 = updates.hair_color_id;
+                cv.facial_hair.color.value        = colors.HairColor;
+                cv.facial_hair_color.value.color  = colors.HairColor;
+            }
+
+            cv.ornaments.Clear();
+            foreach (var ornament in updates.ornaments)
+            {
+                cv.ornaments.Add(new WebId(ornament.remote_id));
+            }
+
+            return cv;
         }
     }
 }

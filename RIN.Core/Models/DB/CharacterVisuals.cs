@@ -1,7 +1,10 @@
 ﻿using System.Collections.Generic;
+using System.Runtime;
+using System.Threading.RateLimiting;
 using ProtoBuf;
 using RIN.Core.ClientApi;
 using RIN.Core.Common;
+using RIN.Core.Models;
 
 namespace RIN.Core.DB
 {
@@ -18,8 +21,8 @@ namespace RIN.Core.DB
         [ProtoMember(8)]  public WebIdValueColor       lip_color         { get; set; }
         [ProtoMember(9)]  public WebIdValueColor       hair_color        { get; set; }
         [ProtoMember(10)] public WebIdValueColor       facial_hair_color { get; set; }
-        [ProtoMember(11)] public List<WebIdValueColor> head_accessories  { get; set; }
-        [ProtoMember(12)] public List<WebId>           ornaments         { get; set; }
+        [ProtoMember(11)] public List<WebIdValueColor> head_accessories  { get; set; } = new();
+        [ProtoMember(12)] public List<WebId>           ornaments         { get; set; } = new();
         [ProtoMember(13)] public WebId                 eyes              { get; set; }
         [ProtoMember(14)] public WebIdValueColorId     hair              { get; set; }
         [ProtoMember(15)] public WebIdValueColorId     facial_hair       { get; set; }
@@ -45,6 +48,37 @@ namespace RIN.Core.DB
             cVisuals.facial_hair       = facial_hair;
             cVisuals.glider            = glider;
             cVisuals.vehicle           = vehicle;
+        }
+
+        public PlayerVisualLoadout AsPlayerVisualLoadout(long charId)
+        {
+            var loadout = new PlayerVisualLoadout()
+            {
+                character_guid       = charId,
+                id                   = id, 
+                race                 = race,
+                gender               = gender,
+                skin_color_id        = skin_color.id,
+                voice_set_id         = voice_set.id,
+                head_id              = head.id,
+                eye_id               = eyes.id,
+                eye_color_id         = eye_color.id,
+                lip_color_id         = lip_color.id,
+                hair_color_id        = hair_color.id,
+                facial_hair_color_id = facial_hair_color.id,
+                head_accessories     = new List<RemoteItem>()
+                {
+                    new RemoteItem() { remote_id = hair.id }
+                },
+                ornaments = ornaments.Select(x => new RemoteItem { remote_id = x.id } ).ToList(),
+            };
+
+            if (facial_hair != null)
+            {
+                loadout.head_accessories.Add(new RemoteItem() { remote_id = facial_hair.id });
+            }
+
+            return loadout;
         }
     }
 }

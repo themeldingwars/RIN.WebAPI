@@ -9,6 +9,12 @@ using RIN.Core.Common;
 using RIN.WebAPI.Utils;
 using RIN.Core.ClientApi;
 using RIN.Core;
+using Microsoft.Net.Http.Headers;
+using RIN.Core.Models;
+using System.Data;
+using static RIN.Core.ClientApi.ClientEvent;
+using RIN.Core.DB.SDB;
+using RIN.Core.Utils;
 
 namespace RIN.WebAPI.Controllers
 {
@@ -52,6 +58,33 @@ namespace RIN.WebAPI.Controllers
             {
                 return ReturnError(restore_result.Result, 404);
             }
+        }
+
+        [HttpGet("characters/{characterGuid}/visual_loadouts")]
+        [R5SigAuthRequired]
+        public async Task<List<PlayerVisualLoadout>> VisualLoadouts(long characterGuid)
+        {
+            var playerLoadout = await Db.GetBasicCharacterAndVisualData(characterGuid);
+            var loadout       = playerLoadout.visuals.AsPlayerVisualLoadout(characterGuid);
+            var result        = new List<PlayerVisualLoadout> { loadout };
+            return result;
+        }
+
+        // TODO Verify ownership, and do purshaing for unowned items
+        [HttpPost("characters/{characterGuid}/visual_loadouts/{loadoutIdx}/purchase_and_update")]
+        [R5SigAuthRequired]
+        public async Task<object> PurchaseAndUpdateVisualLoadout(long characterGuid, int loadoutIdx, [FromBody] PlayerVisualLoadout updates)
+        {
+            var playerLoadout   = await Db.GetBasicCharacterAndVisualData(characterGuid);
+            var colors          = await SDB.GetNewCharactersColors(updates.eye_color_id, updates.skin_color_id, updates.hair_color_id);
+
+            playerLoadout.visuals = CharacterUtil.UpdateCharacterVisualsFromGarage(playerLoadout.visuals, updates, colors);
+
+            await Db.UpdateCharacterVisuals(characterGuid, playerLoadout.visuals);
+
+            Logger.LogInformation("Updating player visuals for {characterGuid} on loadout Idx: {loadoutIdx}", characterGuid, loadoutIdx);
+
+            return Content("{}", "application/json");
         }
 
         private Character CreateDefaultChar(string name = "Aero")
