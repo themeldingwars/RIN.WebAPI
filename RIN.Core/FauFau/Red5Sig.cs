@@ -31,7 +31,7 @@ namespace FauFau.Net.Web
             public ReadOnlySpan<char> Path;
             public ReadOnlySpan<char> Host;
             public ReadOnlySpan<char> Body;
-            public uint               Cid;
+            public long               Cid;
             public int                Version;
         }
 
@@ -71,7 +71,7 @@ namespace FauFau.Net.Web
                 else if (kvp.Key.Equals("hbody", StringComparison.InvariantCultureIgnoreCase))
                     sig.Body = kvp.Value;
                 else if (kvp.Key.Equals("cid", StringComparison.InvariantCultureIgnoreCase))
-                    sig.Cid = uint.TryParse(kvp.Value, out var cid) ? cid : 0;
+                    sig.Cid = long.TryParse(kvp.Value, out var cid) ? cid : 0;
             } while (true);
 
             return sig;
