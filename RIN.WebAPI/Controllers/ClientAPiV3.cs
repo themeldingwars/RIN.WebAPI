@@ -14,7 +14,7 @@ namespace RIN.WebAPI.Controllers
 {
     [ApiController]
     [Route("Clientapi/api/v3")]
-    public class ClientAPiV3 : TmwController
+    public partial class ClientAPiV3 : TmwController
     {
         private readonly ServerDefaultsSettings ServerDefaults;
         private readonly ILogger<OperatorController> Logger;
