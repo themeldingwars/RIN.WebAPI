@@ -9,6 +9,7 @@ message BasicCharacterInfo {
    int32 TitleId = 4;
    int64 CurrentBattleframeId = 5;
    uint32 CurrentBattleframeSDBId = 6;
+   string ArmyTag = 7;
 }
 message CharacterAndBattleframeVisuals {
    BasicCharacterInfo CharacterInfo = 1;

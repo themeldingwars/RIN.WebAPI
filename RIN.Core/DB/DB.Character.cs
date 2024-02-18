@@ -122,12 +122,16 @@ namespace RIN.Core.DB
 
         public async Task<(BasicCharacterInfo info, CharacterVisuals visuals)> GetBasicCharacterAndVisualData(long charId)
         {
-            const string SELECT_SQL = @"SELECT name, title_id, gender, race, current_battleframe_guid, bf.battleframe_sdb_id AS CurrentBattleframeSDBId, webapi.""Characters"".visuals
-	                        FROM webapi.""Characters""
+            const string SELECT_SQL = @"SELECT c.name, title_id, gender, race, current_battleframe_guid, bf.battleframe_sdb_id AS CurrentBattleframeSDBId, a.tag as ArmyTag, c.visuals
+	                        FROM webapi.""Characters"" as c
                                 LEFT JOIN
 					                webapi.""Battleframes"" as bf
-						                ON bf.id = webapi.""Characters"".current_battleframe_guid
-	                        WHERE webapi.""Characters"".character_guid = @charId";
+						                ON bf.id = c.current_battleframe_guid
+	                            LEFT JOIN webapi.""ArmyMembers"" as am 
+	                                    ON c.character_guid = am.character_guid
+	                            LEFT JOIN webapi.""Armies"" as a 
+	                                    ON am.army_guid = a.army_guid
+	                        WHERE c.character_guid = @charId";
 
             var result = await DBCall(async conn => conn.Query<BasicCharacterInfo, byte[], (BasicCharacterInfo, CharacterVisuals)>(
                 SELECT_SQL,
