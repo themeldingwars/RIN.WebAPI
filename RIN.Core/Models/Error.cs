@@ -46,6 +46,8 @@
             public static string ERR_ACCOUNT_CLOSED      = "ERR_ACCOUNT_CLOSED";
             public static string ERR_DUPLICATE_CHARACTER = "ERR_DUPLICATE_CHARACTER";
 
+            public static string ERR_ARMY_NOT_RECRUITING = "ERR_ARMY_NOT_RECRUITING";
+
             // Non client errors, stuff for new web end points
             public static string ERR_NO_EMAIL      = "ERR_NO_EMAIL";
             public static string ERR_NO_TOKEN      = "ERR_NO_TOKEN";
