@@ -281,5 +281,44 @@ namespace RIN.Core.DB
                 return false;
             }
         }
+        
+        public async Task<bool> IsMemberOfArmy(long characterGuid, long? armyGuid = null)
+        { 
+            string selectSql = @"
+                SELECT character_guid
+                FROM webapi.""ArmyMembers""
+                WHERE character_guid = @characterGuid";
+
+            if (armyGuid != null)
+            {
+                selectSql += " AND army_guid = @armyGuid";
+            }
+
+            var results = await DBCall(async conn => await conn.QueryAsync<dynamic>(selectSql, new { characterGuid, armyGuid }));
+
+            return results.Any();
+        }
+
+        public async Task<object> GetPersonalArmyApplications(long characterGuid)
+        {
+            const string SELECT_SQL = @"
+                SELECT id, army_guid, character_guid, message, 'apply' as direction 
+                FROM webapi.""ArmyApplications"" WHERE character_guid = @characterGuid";
+
+            var results = await DBCall(async conn => await conn.QueryAsync<dynamic>(SELECT_SQL, new {characterGuid}));
+
+            return results;
+        }
+
+        public async Task<object> GetPersonalArmyInvites(long characterGuid)
+        {
+            const string SELECT_SQL = @"
+                SELECT id, army_guid, character_guid, message, 'invite' AS direction 
+                FROM webapi.""ArmyInvites"" WHERE character_guid = @characterGuid";
+
+            var results = await DBCall(async conn => await conn.QueryAsync<dynamic>(SELECT_SQL, new {characterGuid}));
+
+            return results;
+        }
     }
 }
