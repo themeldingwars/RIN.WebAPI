@@ -17,21 +17,41 @@ namespace RIN.WebAPI.Utils
                     context.Response.StatusCode  = (int)HttpStatusCode.InternalServerError;
                     context.Response.ContentType = "application/json";
                     var contextFeature = context.Features.Get<IExceptionHandlerFeature>();
-                    if(contextFeature != null) {
-                        var   logger = Log.ForContext<Exception>();
-                        Error err    = null;
-                        
-                        // Swap on the exception type
-                        if (contextFeature.Error is TmwException tmwEx) {
+                    if (contextFeature != null)
+                    {
+                        var logger = Log.ForContext<Exception>();
+                        Error err;
+
+                        if (contextFeature.Error is AggregateException aggrEx)
+                        {
+                            var first = aggrEx.InnerExceptions.First();
+                            if (first is TmwException tmwEx)
+                            {
+                                err = tmwEx.Error;
+                            }
+                            else
+                            {
+                                err = new Error
+                                {
+                                    code = Error.Codes.ERR_UNKNOWN,
+                                    message = $"Unknown Error: {first.GetType()}"
+                                };
+
+                                logger.Error(first, $"Exception in {first.Source}");
+                            }
+                        }
+                        else if (contextFeature.Error is TmwException tmwEx)
+                        {
                             err = tmwEx.Error;
                         }
-                        else {
+                        else
+                        {
                             err = new Error
                             {
                                 code    = Error.Codes.ERR_UNKNOWN,
                                 message = $"Unknown Error: {contextFeature.Error.GetType()}"
                             };
-                            
+
                             logger.Error(contextFeature.Error, $"Exception in {contextFeature.Error.Source}");
                         }
 
