@@ -171,7 +171,6 @@ namespace RIN.Core.DB
             return result > 0;
         }
 
-        // TODO: Check if character is an army commander and prevent delete process if true
         public async Task<Error> SetPendingDeleteCharacterById(long accountId, long characterGuid)
         {
             // TODO: Move calls to be inside the database to make a single DB call
@@ -188,6 +187,22 @@ namespace RIN.Core.DB
             if (char_select_results.Count() == 0)
             {
                 return new Error() { code = Error.Codes.ERR_CHAR_NOT_FOUND, message = "Can't find a character with that GUID" };
+            }
+
+            // Check if character is an army commander and prevent delete process if true
+            const string IS_COMMANDER_SQL = @"SELECT 
+                            character_guid
+                            FROM webapi.""ArmyMembers"" am
+                            INNER JOIN webapi.""ArmyRanks"" ar on ar.army_rank_id = am.army_rank_id
+                            WHERE am.character_guid = @characterGuid AND ar.is_commander = true";
+
+            var isCommanderResults = await DBCall(
+                async conn => await conn.QueryAsync<dynamic>(IS_COMMANDER_SQL, new { characterGuid })
+            );
+
+            if (isCommanderResults.Any())
+            {
+                return new Error() { code = Error.Codes.ERR_CANNOT_DELETE_COMMANDER, message = "Character is an army commander" };
             }
 
             // Check if character is already marked for deletion
