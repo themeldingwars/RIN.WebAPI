@@ -6,7 +6,7 @@ namespace RIN.WebAPI.Models.ClientApi
     {
         private string _name;
 
-        [StringLength(maximumLength: 32, MinimumLength = 10,
+        [StringLength(maximumLength: 32, MinimumLength = 3,
             ErrorMessage = "The name must must have between {2} and {1} characters.")]
         [RegularExpression("^[a-zA-Z0-9]*$",
             ErrorMessage = "The name must contain only letters and numbers.")]
