@@ -47,6 +47,8 @@
             public static string ERR_DUPLICATE_CHARACTER = "ERR_DUPLICATE_CHARACTER";
 
             public static string ERR_ARMY_NOT_RECRUITING = "ERR_ARMY_NOT_RECRUITING";
+            public static string ERR_INVALID_NAME      = "ERR_INVALID_NAME";
+
 
             // Non client errors, stuff for new web end points
             public static string ERR_NO_EMAIL      = "ERR_NO_EMAIL";
