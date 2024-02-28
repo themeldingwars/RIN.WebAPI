@@ -15,6 +15,9 @@
             // Error Code to test against for if a process was successful or not
             public static string SUCCESS                     = "SUCCESS";
 
+            // Error Code to show message directly in the client
+            public static string TMW_MSG                     = "TMW_MSG";
+
             public static string ERR_HAVE_A_COOKIE           = "ERR_HAVE_A_COOKIE";
             public static string ERR_CHANGE_PASSWORD         = "ERR_CHANGE_PASSWORD";
             public static string ERR_INVALID_TIMESTAMP       = "ERR_INVALID_TIMESTAMP";
@@ -46,8 +49,10 @@
             public static string ERR_ACCOUNT_CLOSED      = "ERR_ACCOUNT_CLOSED";
             public static string ERR_DUPLICATE_CHARACTER = "ERR_DUPLICATE_CHARACTER";
 
-            public static string ERR_ARMY_NOT_RECRUITING = "ERR_ARMY_NOT_RECRUITING";
-            public static string ERR_INVALID_NAME      = "ERR_INVALID_NAME";
+            public static string ERR_ARMY_NOT_RECRUITING     = "ERR_ARMY_NOT_RECRUITING";
+            public static string ERR_INVALID_NAME            = "ERR_INVALID_NAME";
+            public static string ERR_COMMANDER_CAN_NOT_LEAVE = "ERR_COMMANDER_CAN_NOT_LEAVE";
+            public static string ERR_DUPLICATE_APPLICATION   = "ERR_DUPLICATE_APPLICATION";
 
 
             // Non client errors, stuff for new web end points

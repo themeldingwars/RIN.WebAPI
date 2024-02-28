@@ -12,6 +12,7 @@ public class TmwBadRequestObjectResult : BadRequestObjectResult
             .SelectMany(kvp => kvp.Value.Errors.Select(e => e.ErrorMessage))
             .Aggregate((current, next) => $"{current}\n{next}");
 
+        // todo try to set code from req classes, use there built-in codes e.g. ERR_INVALID_TAG, ERR_INVALID_REGION
         Value = new Error
         {
             code    = "TMW_BAD_REQUEST",

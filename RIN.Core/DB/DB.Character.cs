@@ -318,7 +318,7 @@ namespace RIN.Core.DB
         {
             const string SELECT_SQL = @"
                 SELECT id, army_guid, character_guid, message, 'apply' as direction 
-                FROM webapi.""ArmyApplications"" WHERE character_guid = @characterGuid";
+                FROM webapi.""ArmyApplications"" WHERE character_guid = @characterGuid AND invite = false";
 
             var results = await DBCall(async conn => await conn.QueryAsync<dynamic>(SELECT_SQL, new {characterGuid}));
 
@@ -329,7 +329,7 @@ namespace RIN.Core.DB
         {
             const string SELECT_SQL = @"
                 SELECT id, army_guid, character_guid, message, 'invite' AS direction 
-                FROM webapi.""ArmyInvites"" WHERE character_guid = @characterGuid";
+                FROM webapi.""ArmyApplications"" WHERE character_guid = @characterGuid AND invite = true";
 
             var results = await DBCall(async conn => await conn.QueryAsync<dynamic>(SELECT_SQL, new {characterGuid}));
 

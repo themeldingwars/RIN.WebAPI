@@ -12,6 +12,15 @@ namespace RIN.WebAPI.Controllers
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<object> GetPersonalArmyApplications(long characterGuid)
         {
+            if (characterGuid != GetCid())
+            {
+                return ReturnError(
+                    Error.Codes.ERR_UNKNOWN,
+                    "You can only view your own army applications.",
+                    StatusCodes.Status403Forbidden
+                );
+            }
+
             return await Db.GetPersonalArmyApplications(characterGuid);
         }
 

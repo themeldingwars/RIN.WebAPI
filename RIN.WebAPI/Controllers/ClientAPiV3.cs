@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using RIN.Core;
 using RIN.Core.Common;
 using RIN.Core.DB;
 using RIN.Core.DB.SDB;
@@ -10,6 +11,8 @@ namespace RIN.WebAPI.Controllers
 {
     [ApiController]
     [Route("Clientapi/api/v3")]
+    [Produces("application/json")]
+    [ProducesErrorResponseType(typeof(Error))]
     public partial class ClientAPiV3 : TmwController
     {
         private readonly ServerDefaultsSettings ServerDefaults;

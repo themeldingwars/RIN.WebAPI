@@ -7,8 +7,6 @@ using RIN.WebAPI.Utils;
 
 namespace RIN.WebAPI.Controllers
 {
-    [Produces("application/json")]
-    [ProducesErrorResponseType(typeof(Error))]
     public partial class ClientAPiV3
     {
         [HttpGet("armies")]
@@ -39,7 +37,6 @@ namespace RIN.WebAPI.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<Army>> CreateArmy([FromBody] CreateArmyReq req)
         {
-            // todo: move all checks to stored procedure
             if (await Db.IsMemberOfArmy(GetCid()))
             {
                 return ReturnError(
@@ -49,24 +46,9 @@ namespace RIN.WebAPI.Controllers
                     );
             }
 
-            var armyGuid = Db.CreateArmy(req.name, req.website, req.description,
+            var armyGuid = Db.CreateArmy(GetCid(), req.name, req.website, req.description,
                 req.is_recruiting, req.playstyle, req.region, req.personality);
 
-            // todo copypasted from Sleepwalker
-            // // Create ranks (owner + default)
-            // var ownerRankId = await Db.ArmyCreateOwnerRank(armyInfo.army_id, armyInfo.army_guid);
-            // var defaultRankId = await Db.ArmyAddRank(armyInfo.army_id, armyInfo.army_guid, "Soldier", true);
-            //
-            // if (ownerRankId < 1 || defaultRankId.code != "SUCCESS")
-            //     return new Error() { code = Error.Codes.ERR_UNKNOWN, message = "Unknown Error. Failed to create army ranks." };
-            //
-            // // Add owner to army and set owner rank
-            // var ownerMember = await Db.ArmyAddMember(armyInfo.army_id, armyInfo.army_guid, characterGuid, ownerRankId);
-            //
-            // if (ownerMember.code != "SUCCESS")
-            //     return new Error() { code = Error.Codes.ERR_UNKNOWN, message = "Unknown Error. Failed to add owner to army." };
-            //
-            // tx.Complete();
             return await GetArmy(armyGuid.Result);
         }
 
@@ -122,29 +104,69 @@ namespace RIN.WebAPI.Controllers
 
         [HttpPut("armies/{armyGuid}/disband")]
         [R5SigAuthRequired]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<object> DisbandArmy(long armyGuid)
         {
-            return new { };
+            if (await Db.GetArmyRankPosition(armyGuid, GetCid()) != 1)
+            {
+                return ReturnError(
+                    Error.Codes.ERR_UNKNOWN,
+                    "You are not the commander of this army.",
+                    StatusCodes.Status403Forbidden
+                );
+            }
+
+            var result = await Db.DisbandArmy(armyGuid);
+
+            return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to disband the army.");
         }
 
-        [HttpPut("armies/{armyGuid}/step_down")]
+        [HttpPost("armies/{armyGuid}/step_down")]
         [R5SigAuthRequired]
         public async Task<object> StepDownAsCommander(long armyGuid, [FromBody] StepDownAsArmyCommanderReq req)
         {
-            // todo: demote current player to some lower rank and promote req.character_guid to commander
-            // You also have the option of stepping down from this page as leader of the army.
-            //     When you use this option, you will type the name of your successor into the field,
-            //     and they will take ownership of the army; you will then be assigned the previous rank of that member.
-            return NoContent();
+            if (await Db.GetArmyRankPosition(armyGuid, GetCid()) != 1)
+            {
+                return ReturnError(
+                    Error.Codes.ERR_UNKNOWN,
+                    "You are not the commander of this army.",
+                    StatusCodes.Status403Forbidden
+                );
+            }
+
+            var result = await Db.StepDownAsCommander(armyGuid, GetCid(), req.character_name);
+
+            return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to step down as commander of the army.");
         }
 
         [HttpPut("armies/{armyGuid}/leave")]
         [R5SigAuthRequired]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
         public async Task<object> LeaveArmy(long armyGuid)
         {
-            await Db.LeaveArmy(armyGuid, GetCid());
+            if (!await Db.IsMemberOfArmy(GetCid(), armyGuid))
+            {
+                return ReturnError(
+                    Error.Codes.ERR_UNKNOWN,
+                    "You are not a member of this army.",
+                    StatusCodes.Status422UnprocessableEntity
+                );
+            }
 
-            return NoContent();
+            if (await Db.GetArmyRankPosition(armyGuid, GetCid()) == 1)
+            {
+                return ReturnError(
+                    Error.Codes.ERR_COMMANDER_CAN_NOT_LEAVE,
+                    "The commander cannot leave the army. Step down or disband the army",
+                    StatusCodes.Status422UnprocessableEntity
+                );
+            }
+
+            var result = await Db.LeaveArmy(armyGuid, GetCid());
+
+            return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to leave the army.");
         }
 
         [HttpGet("armies/{armyGuid}/ranks")]
@@ -190,6 +212,7 @@ namespace RIN.WebAPI.Controllers
         [R5SigAuthRequired]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
         public async Task<object> RemoveArmyRank(long armyGuid, long rankId)
         {
             if (!await Db.ArmyMemberHasPermission(armyGuid, GetCid(), ArmyPermission.can_edit))
@@ -201,7 +224,18 @@ namespace RIN.WebAPI.Controllers
                 );
             }
 
-            var result = await Db.ReassignMembersAndRemoveArmyRank(armyGuid, rankId);
+            var defaultArmyRankId = await Db.GetDefaultArmyRankId(armyGuid);
+
+            if (rankId == defaultArmyRankId)
+            {
+                return ReturnError(
+                    Error.Codes.TMW_MSG,
+                    "You cannot remove the default army rank.",
+                    StatusCodes.Status422UnprocessableEntity
+                );
+            }
+
+            var result = await Db.ReassignMembersAndRemoveArmyRank(armyGuid, rankId, defaultArmyRankId);
 
             return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to remove rank from the army.");
         }
@@ -417,26 +451,104 @@ namespace RIN.WebAPI.Controllers
             return await Db.GetArmyApplications(armyGuid);
         }
 
-        [HttpPost("armies/{armyGuid}/applications/{applicationId}/approve")]
+        [HttpPost("armies/{armyGuid}/applications/batch_approve")]
         [R5SigAuthRequired]
-        public async Task<object> ApproveArmyApplication(long armyGuid, long applicationId)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<object> ApproveArmyApplications(long armyGuid, [FromBody] long[] applicationIds)
         {
-            // await Db.ApproveArmyApplication(armyGuid, applicationId);
+            if (!await Db.ArmyMemberHasPermission(armyGuid, GetCid(), ArmyPermission.can_invite))
+            {
+                return ReturnError(
+                    Error.Codes.ERR_UNKNOWN,
+                    "You do not have permission to approve applications for this army.",
+                    StatusCodes.Status403Forbidden
+                );
+            }
 
-            return new { };
+            var result = await Db.ApproveArmyApplicationsOrInvites(armyGuid, applicationIds);
+
+            return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to approve army applications.");
         }
 
-        [HttpPost("armies/{armyGuid}/applications/{applicationId}/reject")]
+        [HttpPost("armies/{armyGuid}/applications/{id}/approve")]
         [R5SigAuthRequired]
-        public async Task<object> RejectArmyApplication(long armyGuid, long applicationId)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<object> ApproveArmyApplicationOrInvite(long armyGuid, long id)
         {
-            await Db.RejectArmyApplication(armyGuid, applicationId);
+            if (await Db.HasInviteFromArmy(armyGuid, GetCid()))
+            {
+                return await Db.ApproveArmyApplicationsOrInvites(armyGuid, [id])
+                    ? new { }
+                    : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to approve army invite.");
+            }
 
-            return new { };
+            if (!await Db.ArmyMemberHasPermission(armyGuid, GetCid(), ArmyPermission.can_invite))
+            {
+                return ReturnError(
+                    Error.Codes.ERR_UNKNOWN,
+                    "You do not have permission to approve applications for this army.",
+                    StatusCodes.Status403Forbidden
+                );
+            }
+
+            var result = await Db.ApproveArmyApplicationsOrInvites(armyGuid, [id]);
+
+            return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to approve army application.");
+        }
+
+        [HttpPost("armies/{armyGuid}/applications/batch_reject")]
+        [R5SigAuthRequired]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<object> RejectArmyApplications(long armyGuid, [FromBody] long[] applicationIds)
+        {
+            if (!await Db.ArmyMemberHasPermission(armyGuid, GetCid(), ArmyPermission.can_invite))
+            {
+                return ReturnError(
+                    Error.Codes.ERR_UNKNOWN,
+                    "You do not have permission to reject applications for this army.",
+                    StatusCodes.Status403Forbidden
+                );
+            }
+
+            var result = await Db.RejectArmyApplicationsOrInvites(armyGuid, applicationIds);
+
+            return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to reject army applications.");
+        }
+
+        [HttpPost("armies/{armyGuid}/applications/{id}/reject")]
+        [R5SigAuthRequired]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<object> RejectArmyApplicationOrInvite(long armyGuid, long id)
+        {
+            if (await Db.HasInviteFromArmy(armyGuid, GetCid()))
+            {
+                return await Db.RejectArmyApplicationsOrInvites(armyGuid, [id])
+                    ? new { }
+                    : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to reject army invite.");
+            }
+
+            if (!await Db.ArmyMemberHasPermission(armyGuid, GetCid(), ArmyPermission.can_invite))
+            {
+                return ReturnError(
+                    Error.Codes.ERR_UNKNOWN,
+                    "You do not have permission to reject applications for this army.",
+                    StatusCodes.Status403Forbidden
+                );
+            }
+
+            var result = await Db.RejectArmyApplicationsOrInvites(armyGuid, [id]);
+
+            return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to reject army application.");
         }
 
         [HttpPost("armies/{armyGuid}/invite")]
         [R5SigAuthRequired]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<object> InviteToArmy(long armyGuid, [FromBody] InviteToArmyReq req)
         {
             if (!await Db.ArmyMemberHasPermission(armyGuid, GetCid(), ArmyPermission.can_invite))
@@ -448,21 +560,17 @@ namespace RIN.WebAPI.Controllers
                 );
             }
 
-            await Db.InviteToArmy(armyGuid, req.character_name, req.message);
+            var result = await Db.InviteToArmy(armyGuid, req.character_name, req.message);
 
-            return new { };
+            return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to invite to army.");
         }
 
         [HttpPost("armies/{armyGuid}/apply")]
         [R5SigAuthRequired]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
         public async Task<object> ApplyToArmy(long armyGuid, [FromBody] ApplyToArmyReq req)
         {
-            // todo: maybe move everything to stored procedure
-            // ERR_ARMY_NOT_RECRUITING = "The army is not currently recruiting.";
-
-            // Other errors to use:
-            // ARMY_ERROR, ARMY_ERR_UNKNOWN, ERR_APPLICATION_NOT_FOUND, ARMY_ERR_UNAVAILABLE, ERR_COMMANDER_CAN_NOT_LEAVE,
-            // ERR_DUPLICATE_APPLICATION, ERR_DUPLICATE_CHARACTER, ERR_INVALID_NAME, ERR_INVALID_TAG, ERR_INVALID_REGION
             if (await Db.IsMemberOfArmy(GetCid()))
             {
                 return ReturnError(
@@ -472,9 +580,9 @@ namespace RIN.WebAPI.Controllers
                 );
             }
 
-            await Db.ApplyToArmy(armyGuid, GetCid(), req.message);
+            var result = await Db.ApplyToArmy(armyGuid, GetCid(), req.message);
 
-            return new { };
+            return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to apply to army.");
         }
     }
 }

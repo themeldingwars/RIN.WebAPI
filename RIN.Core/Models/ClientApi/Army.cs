@@ -5,7 +5,7 @@ namespace RIN.Core.ClientApi
     public class Army
     {
         public long              army_guid      { get; set; }
-        public DateTime          established_at { get; set; }
+        public long              established_at { get; set; }
         public bool              is_recruiting  { get; set; }
         public string            motd           { get; set; }
         public string            name           { get; set; }
