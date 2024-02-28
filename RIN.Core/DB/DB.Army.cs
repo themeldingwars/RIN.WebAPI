@@ -21,7 +21,7 @@ namespace RIN.Core.DB
                         region,
                         (SELECT COUNT(*) FROM webapi.""ArmyMembers"" am WHERE am.army_guid = a.army_guid) AS member_count
                     FROM webapi.""Armies"" a
-                    AND (@searchQuery IS NULL OR name ILIKE @searchQuery)
+                    WHERE @searchQuery IS NULL OR name ILIKE @searchQuery
                 )
                 SELECT 
                     army_guid,
