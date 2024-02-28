@@ -518,7 +518,7 @@ namespace RIN.Core.DB
                     AND am.character_guid = ANY(@characterGuids)
                     AND ar.position > @initiatorRankPosition;";
 
-            var result = await DBCall(async conn => await conn.ExecuteAsync(DELETE_SQL, new { armyGuid, initiatorRank = initiatorRankPosition, characterGuids }));
+            var result = await DBCall(async conn => await conn.ExecuteAsync(DELETE_SQL, new { armyGuid, initiatorRankPosition, characterGuids }));
 
             return result;
         }
@@ -531,10 +531,10 @@ namespace RIN.Core.DB
                     message, 
                     id, 
                     name,
-                    'apply' as direction 
+                    'apply' as direction
                 FROM webapi.""ArmyApplications"" aa
                 INNER JOIN webapi.""Characters"" c USING (character_guid)
-                WHERE army_guid = @armyGuid";
+                WHERE army_guid = @armyGuid AND invite = false";
 
             var results = await DBCall(async conn => await conn.QueryAsync<dynamic>(SELECT_SQL, new { armyGuid }));
 
@@ -637,6 +637,18 @@ namespace RIN.Core.DB
                     SELECT 1
                     FROM webapi.""ArmyApplications""
                     WHERE army_guid = @armyGuid AND character_guid = @characterGuid AND invite = true
+                );";
+
+            return await DBCall(async conn => await conn.QuerySingleAsync<bool>(SELECT_SQL, new { armyGuid, characterGuid }));
+        }
+
+        public async Task<bool> HasInviteFromArmyOrApplied(long armyGuid, long characterGuid)
+        {
+            const string SELECT_SQL = @"
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM webapi.""ArmyApplications""
+                    WHERE army_guid = @armyGuid AND character_guid = @characterGuid
                 );";
 
             return await DBCall(async conn => await conn.QuerySingleAsync<bool>(SELECT_SQL, new { armyGuid, characterGuid }));

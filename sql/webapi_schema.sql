@@ -43,8 +43,9 @@ declare
     application_id       bigint;
     default_army_rank_id bigint;
     char_guid            bigint;
-    result               boolean = FALSE;
 BEGIN
+    result = FALSE;
+
     SELECT army_rank_id
     FROM webapi."ArmyRanks" ar
     WHERE is_default = true
@@ -303,6 +304,8 @@ declare
     new_commander_guid            bigint = -1;
     new_commander_current_rank_id bigint = -1;
 BEGIN
+    result = FALSE;
+    
     SELECT c.character_guid INTO new_commander_guid FROM webapi."Characters" c WHERE c.name = new_commander_name;
 
     SELECT ar.army_rank_id

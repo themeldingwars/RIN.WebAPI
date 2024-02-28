@@ -524,11 +524,11 @@ namespace RIN.WebAPI.Controllers
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<object> RejectArmyApplicationOrInvite(long armyGuid, long id)
         {
-            if (await Db.HasInviteFromArmy(armyGuid, GetCid()))
+            if (await Db.HasInviteFromArmyOrApplied(armyGuid, GetCid()))
             {
                 return await Db.RejectArmyApplicationsOrInvites(armyGuid, [id])
                     ? new { }
-                    : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to reject army invite.");
+                    : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to reject army invite or withdraw an application.");
             }
 
             if (!await Db.ArmyMemberHasPermission(armyGuid, GetCid(), ArmyPermission.can_invite))
