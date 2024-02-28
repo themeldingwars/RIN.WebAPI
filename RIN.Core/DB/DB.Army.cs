@@ -12,26 +12,19 @@ namespace RIN.Core.DB
         public async Task<PageResults<ArmyListItem>> GetArmies(int page, int perPage, string searchQuery)
         {
             const string SELECT_SQL = @"
-                WITH cte AS (
-                    SELECT 
-                        army_guid,
-                        name,
-                        personality,
-                        is_recruiting,
-                        region,
-                        (SELECT COUNT(*) FROM webapi.""ArmyMembers"" am WHERE am.army_guid = a.army_guid) AS member_count
-                    FROM webapi.""Armies"" a
-                    WHERE @searchQuery IS NULL OR name ILIKE @searchQuery
-                )
+                SELECT COUNT(*) AS total_count 
+                FROM webapi.""Armies"" a
+                WHERE @searchQuery IS NULL OR name ILIKE @searchQuery;
+
                 SELECT 
                     army_guid,
                     name,
                     personality,
                     is_recruiting,
                     region,
-                    member_count,
-                    COUNT(*) OVER() AS total_count
-                FROM cte
+                    (SELECT COUNT(*) FROM webapi.""ArmyMembers"" am WHERE am.army_guid = a.army_guid) AS member_count
+                FROM webapi.""Armies"" a
+                WHERE @searchQuery IS NULL OR name ILIKE @searchQuery
                 ORDER BY LOWER(name) ASC 
                 LIMIT @perPage OFFSET @offset";
 
@@ -44,29 +37,27 @@ namespace RIN.Core.DB
             p.Add("perPage", perPage);
             p.Add("offset", (page - 1) * perPage);
 
-            var results = await DBCall(async conn => await conn.QueryAsync<dynamic>(SELECT_SQL, p));
 
-            var armies = new List<ArmyListItem>(results.Count());
-
-            foreach (var result in results)
-            {
-                armies.Add(new ArmyListItem
+            var pageResults = await DBCall(
+                async conn =>
                 {
-                    army_guid = result.army_guid,
-                    name = result.name,
-                    personality = result.personality,
-                    is_recruiting = result.is_recruiting,
-                    region = result.region,
-                    member_count = (uint)result.member_count,
-                });
-            }
+                    await using var multiQuery = await conn.QueryMultipleAsync(SELECT_SQL, p);
 
-            return new PageResults<ArmyListItem>
-            {
-                page = page.ToString(),
-                total_count = results.First().total_count,
-                results = armies,
-            };
+                    var pageResults = multiQuery.Read<PageResults<ArmyListItem>>().Single();
+                    pageResults.page = page.ToString();
+
+                    if (pageResults.total_count > 0)
+                    {
+                        var armies = multiQuery.Read<ArmyListItem>().ToList();
+
+                        pageResults.results = armies;
+                    }
+
+                    return pageResults;
+                }
+            );
+
+            return pageResults;
         }
 
         public async Task<Army?> GetArmy(long armyGuid)
@@ -232,18 +223,11 @@ namespace RIN.Core.DB
 
                 p.Add("@result", dbType: DbType.Boolean, direction: ParameterDirection.Output);
 
-                try
-                {
-                    var r = await conn.ExecuteAsync(
-                        "webapi.\"StepDownAsCommander\"",
-                        p,
-                        commandType: CommandType.StoredProcedure
-                    );
-                }
-                catch (Exception e)
-                {
-                    var a = e;
-                }
+                var r = await conn.ExecuteAsync(
+                    "webapi.\"StepDownAsCommander\"",
+                    p,
+                    commandType: CommandType.StoredProcedure
+                );
 
                 return p.Get<bool>("@result");
             });
@@ -376,35 +360,27 @@ namespace RIN.Core.DB
         public async Task<PageResults<ArmyMember>> GetArmyMembers(long armyGuid, int page, int perPage)
         {
             const string SELECT_SQL = @"
-                WITH cte AS (
-                    SELECT 
-                        am.character_guid,
-                        am.army_rank_id,
-                        ar.position AS rank_position,
-                        ar.name AS rank_name,
-                        c.last_seen_at,
-                        am.public_note,
-                        c.name AS character_name,
-                        b.battleframe_sdb_id AS current_frame_sdb_id,
-                        b.level AS current_level
-                    FROM webapi.""ArmyMembers"" am
-                    INNER JOIN webapi.""Characters"" c USING (character_guid)
-                    INNER JOIN webapi.""ArmyRanks"" ar USING (army_rank_id)
-                    INNER JOIN webapi.""Battleframes"" b ON b.id = c.current_battleframe_guid
-                    WHERE am.army_guid = @armyGuid
-                )
+                SELECT COUNT(*) AS total_count 
+                FROM webapi.""ArmyMembers"" am
+                WHERE am.army_guid = @armyGuid;
+
                 SELECT 
-                    character_guid,
-                    army_rank_id,
-                    rank_position,
-                    rank_name,
-                    last_seen_at,
-                    public_note,
-                    character_name,
-                    current_frame_sdb_id,
-                    current_level,
-                    COUNT(*) OVER() AS total_count
-                FROM cte
+                    am.character_guid,
+                    am.army_rank_id,
+                    ar.position AS rank_position,
+                    ar.name AS rank_name,
+                    EXTRACT(EPOCH FROM last_seen_at)::bigint AS last_seen_at,
+                    am.public_note,
+                    c.name,
+                    b.battleframe_sdb_id AS current_frame_sdb_id,
+                    b.level AS current_level,
+                    448 as last_zone_id,
+                    true as is_online
+                FROM webapi.""ArmyMembers"" am
+                INNER JOIN webapi.""Characters"" c USING (character_guid)
+                INNER JOIN webapi.""ArmyRanks"" ar USING (army_rank_id)
+                INNER JOIN webapi.""Battleframes"" b ON b.id = c.current_battleframe_guid
+                WHERE am.army_guid = @armyGuid
                 ORDER BY last_seen_at DESC
                 LIMIT @perPage OFFSET @offset";
 
@@ -413,37 +389,25 @@ namespace RIN.Core.DB
             p.Add("perPage", perPage);
             p.Add("offset", (page - 1) * perPage);
 
-            var results = await DBCall(async conn => await conn.QueryAsync<dynamic>(SELECT_SQL, p));
 
-            var armyMembers = new List<ArmyMember>(results.Count());
-            foreach (var result in results)
-            {
-                var lastSeenAt = ((DateTimeOffset)result.last_seen_at).ToUnixTimeSeconds();
-
-                var armyMember = new ArmyMember
+            var pageResults = await DBCall(
+                async conn =>
                 {
-                    character_guid = result.character_guid,
-                    army_rank_id = result.army_rank_id,
-                    rank_position = result.rank_position,
-                    rank_name = result.rank_name,
-                    last_seen_at = lastSeenAt,
-                    last_zone_id = 448,
-                    is_online = true,
-                    public_note = result.public_note,
-                    name = result.character_name,
-                    current_frame_sdb_id = (uint)result.current_frame_sdb_id,
-                    current_level = (uint)result.current_level,
-                };
+                    await using var multiQuery = await conn.QueryMultipleAsync(SELECT_SQL, p);
 
-                armyMembers.Add(armyMember);
-            }
+                    var pageResults = multiQuery.Read<PageResults<ArmyMember>>().Single();
+                    pageResults.page = page.ToString();
 
-            var pageResults = new PageResults<ArmyMember>
-            {
-                page = page.ToString(),
-                total_count = results.First().total_count,
-                results = armyMembers,
-            };
+                    if (pageResults.total_count > 0)
+                    {
+                        var armyMembers = multiQuery.Read<ArmyMember>().ToList();
+
+                        pageResults.results = armyMembers;
+                    }
+
+                    return pageResults;
+                }
+            );
 
             return pageResults;
         }
