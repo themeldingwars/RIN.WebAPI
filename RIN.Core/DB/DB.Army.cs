@@ -274,7 +274,7 @@ namespace RIN.Core.DB
         }
 
         public async Task<bool> AddArmyRank(long armyGuid, bool canPromote, bool canEdit,
-            bool isOfficer, string name, bool canInvite, bool canKick, int position)
+            bool isOfficer, string name, bool canInvite, bool canKick, uint position)
         {
             const string INSERT_SQL = @"
                 INSERT INTO webapi.""ArmyRanks"" (
@@ -639,6 +639,18 @@ namespace RIN.Core.DB
                 WHERE army_guid = @armyGuid AND is_default = true;";
 
             return await DBCall(async conn => await conn.QuerySingleAsync<long>(SELECT_SQL, new { armyGuid }));
+        }
+
+        public async Task<bool> IsArmyRecruiting(long armyGuid)
+        {
+            const string IS_RECRUITING_SQL = @"
+                SELECT is_recruiting
+                FROM webapi.""Armies""
+                WHERE army_guid = @armyGuid;";
+
+            var isRecruiting = await DBCall(async conn => await conn.QuerySingleAsync<bool>(IS_RECRUITING_SQL, new { armyGuid }));
+
+            return isRecruiting;
         }
     }
 }

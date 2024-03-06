@@ -2,8 +2,8 @@
 {
     public class ArmyRank
     {
-        public uint      id             { get; set; }
-        public ulong     army_guid      { get; set; }
+        public long      id             { get; set; }
+        public long      army_guid      { get; set; }
         public string    name           { get; set; }
         public bool      is_commander   { get; set; }
         public bool      can_invite     { get; set; }

@@ -468,7 +468,7 @@ CREATE TABLE webapi."Armies" (
     region character varying(6) NOT NULL,
     description character varying(2048) NOT NULL,
     motd text NOT NULL,
-    website character varying(255) NOT NULL,
+    website character varying(255),
     login_message text NOT NULL,
     established_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );

@@ -4,7 +4,7 @@
     {
         public long    character_guid       { get; set; }
         public long    army_rank_id         { get; set; }
-        public int     rank_position        { get; set; }
+        public uint    rank_position        { get; set; }
         public string  rank_name            { get; set; }
         public long    last_seen_at         { get; set; }
         public int     last_zone_id         { get; set; }

@@ -124,6 +124,8 @@ namespace RIN.WebAPI.Controllers
 
         [HttpPost("armies/{armyGuid}/step_down")]
         [R5SigAuthRequired]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<object> StepDownAsCommander(long armyGuid, [FromBody] StepDownAsArmyCommanderReq req)
         {
             if (await Db.GetArmyRankPosition(armyGuid, GetCid()) != 1)
@@ -571,6 +573,15 @@ namespace RIN.WebAPI.Controllers
         [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
         public async Task<object> ApplyToArmy(long armyGuid, [FromBody] ApplyToArmyReq req)
         {
+            if (!await Db.IsArmyRecruiting(armyGuid))
+            {
+                return ReturnError(
+                    Error.Codes.ERR_UNKNOWN,
+                    "This army is not recruiting.",
+                    StatusCodes.Status422UnprocessableEntity
+                );
+            }
+
             if (await Db.IsMemberOfArmy(GetCid()))
             {
                 return ReturnError(
