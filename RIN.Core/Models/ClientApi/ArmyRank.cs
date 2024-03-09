@@ -12,7 +12,7 @@
         public DateTime? updated_at     { get; set; }
         public bool      can_edit       { get; set; }
         public bool      can_promote    { get; set; }
-        public uint      position       { get; set; }
+        public short     position       { get; set; }
         public bool      is_officer     { get; set; }
         public bool      can_mass_email { get; set; }
         public bool      is_default     { get; set; }

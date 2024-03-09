@@ -33,16 +33,36 @@ COMMENT ON SCHEMA webapi IS 'standard public schema';
 
 
 --
--- Name: ApproveArmyApplicationsOrInvites(bigint, bigint[]); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+-- Name: army_rank_type; Type: TYPE; Schema: webapi; Owner: tmwadmin
 --
 
-CREATE FUNCTION webapi."ApproveArmyApplicationsOrInvites"(army_guid bigint, application_ids bigint[], OUT result boolean) RETURNS boolean
+CREATE TYPE webapi.army_rank_type AS (
+	id integer,
+	can_promote boolean,
+	can_edit boolean,
+	is_officer boolean,
+	name text,
+	can_invite boolean,
+	can_kick boolean
+);
+
+
+ALTER TYPE webapi.army_rank_type OWNER TO tmwadmin;
+
+--
+-- Name: ApproveArmyApplicationsOrInvites(bigint, bigint, bigint[]); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE FUNCTION webapi."ApproveArmyApplicationsOrInvites"(army_guid bigint, initiator_guid bigint, application_ids bigint[], OUT result boolean) RETURNS boolean
     LANGUAGE plpgsql
     AS $$
 declare
+    payload              json;
     application_id       bigint;
     default_army_rank_id bigint;
     char_guid            bigint;
+    army_name            text;
+    char_name            text;
 BEGIN
     result = FALSE;
 
@@ -57,8 +77,8 @@ BEGIN
             IF EXISTS (SELECT 1
                        FROM webapi."ArmyMembers" am
                                 INNER JOIN webapi."ArmyApplications" aa ON am.character_guid = aa.character_guid
-                       WHERE aa.id = application_id) THEN
-                CONTINUE;
+                       WHERE aa.id = application_id)
+                THEN CONTINUE;
             END IF;
 
             INSERT INTO webapi."ArmyMembers" (army_guid, character_guid, army_rank_id)
@@ -72,8 +92,25 @@ BEGIN
 
             DELETE
             FROM webapi."ArmyApplications" aa
-            WHERE aa.army_guid = "ApproveArmyApplicationsOrInvites".army_guid
-              AND character_guid = char_guid;
+            WHERE character_guid = char_guid;
+
+            IF initiator_guid = char_guid THEN
+                SELECT name
+                FROM webapi."Characters"
+                WHERE character_guid = char_guid
+                INTO char_name;
+
+                payload := json_build_object('ArmyGuid', army_guid, 'InitiatorName', char_name);
+                PERFORM pg_notify('events', 'ArmyInviteApproved->' || payload::text);
+            ELSE
+                SELECT name
+                FROM webapi."Armies" a
+                WHERE a.army_guid = "ApproveArmyApplicationsOrInvites".army_guid
+                INTO army_name;
+
+                payload := json_build_object('CharacterGuid', char_guid, 'InitiatorName', army_name);
+                PERFORM pg_notify('events', 'ArmyApplicationApproved->' || payload::text);
+            END IF;
         END LOOP;
 
     result = TRUE;
@@ -84,7 +121,7 @@ END
 $$;
 
 
-ALTER FUNCTION webapi."ApproveArmyApplicationsOrInvites"(army_guid bigint, application_ids bigint[], OUT result boolean) OWNER TO tmwadmin;
+ALTER FUNCTION webapi."ApproveArmyApplicationsOrInvites"(army_guid bigint, initiator_guid bigint, application_ids bigint[], OUT result boolean) OWNER TO tmwadmin;
 
 --
 -- Name: CreateArmy(bigint, character varying, character varying, character varying, boolean, character varying, character varying, character varying); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
@@ -253,10 +290,10 @@ $$;
 ALTER FUNCTION webapi."CreateNewCharacter"(account_id bigint, name text, is_dev boolean, voice_setid integer, gender integer, visuals bytea, OUT error_text text, OUT new_character_id bigint) OWNER TO tmwadmin;
 
 --
--- Name: InviteToArmy(bigint, character varying, text); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+-- Name: InviteToArmy(bigint, character varying, text, bigint); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
 --
 
-CREATE FUNCTION webapi."InviteToArmy"(army_guid bigint, character_name character varying, message text, OUT result boolean, OUT error_text text) RETURNS record
+CREATE FUNCTION webapi."InviteToArmy"(army_guid bigint, character_name character varying, message text, inviter_guid bigint, OUT result boolean, OUT error_text text) RETURNS record
     LANGUAGE plpgsql
     AS $$
 declare
@@ -271,11 +308,11 @@ BEGIN
         RETURN;
     END IF;
 
-    INSERT INTO webapi."ArmyApplications" (army_guid, character_guid, message, invite)
+    INSERT INTO webapi."ArmyApplications" (army_guid, character_guid, message, inviter_guid)
     VALUES ("InviteToArmy".army_guid,
             (SELECT c.character_guid FROM webapi."Characters" c WHERE c.name = character_name),
             "InviteToArmy".message,
-            true);
+            "InviteToArmy".inviter_guid);
 
     result = TRUE;
 
@@ -290,7 +327,7 @@ BEGIN
 END$$;
 
 
-ALTER FUNCTION webapi."InviteToArmy"(army_guid bigint, character_name character varying, message text, OUT result boolean, OUT error_text text) OWNER TO tmwadmin;
+ALTER FUNCTION webapi."InviteToArmy"(army_guid bigint, character_name character varying, message text, inviter_guid bigint, OUT result boolean, OUT error_text text) OWNER TO tmwadmin;
 
 --
 -- Name: StepDownAsCommander(bigint, bigint, text); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
@@ -351,24 +388,32 @@ $$;
 ALTER FUNCTION webapi."StepDownAsCommander"(army_guid bigint, commander_guid bigint, new_commander_name text, OUT result boolean) OWNER TO tmwadmin;
 
 --
--- Name: UpdateArmyRanksOrder(bigint, integer[]); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+-- Name: UpdateArmyRanks(bigint, integer, text); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
 --
 
-CREATE FUNCTION webapi."UpdateArmyRanksOrder"(army_guid bigint, rank_ids integer[], OUT result boolean) RETURNS boolean
+CREATE FUNCTION webapi."UpdateArmyRanks"(army_guid bigint, initiator_rank_position integer, ranks_json text, OUT result boolean) RETURNS boolean
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    rank_id int;
-    i       int     = 1;
+    rank webapi.army_rank_type;
+    ranks webapi.army_rank_type[];
 BEGIN
-    FOREACH rank_id IN ARRAY rank_ids
+    ranks := ARRAY(SELECT (id, can_promote, can_edit, is_officer, name, can_invite, can_kick) 
+                   FROM json_populate_recordset(NULL::webapi.army_rank_type, ranks_json::json));
+
+    FOREACH rank IN ARRAY ranks
         LOOP
             UPDATE webapi."ArmyRanks" ar
-            SET position = i,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE ar.army_guid = "UpdateArmyRanksOrder".army_guid
-              AND army_rank_id = rank_id;
-            i := i + 1;
+            SET name        = COALESCE(rank.name, name),
+                can_edit    = rank.can_edit,
+                can_invite  = rank.can_invite,
+                can_kick    = rank.can_kick,
+                is_officer  = rank.is_officer,
+                can_promote = rank.can_promote,
+                updated_at  = CURRENT_TIMESTAMP
+            WHERE ar.army_guid = "UpdateArmyRanks".army_guid
+              AND army_rank_id = rank.id
+              AND position > initiator_rank_position;
         END LOOP;
     result = TRUE;
 EXCEPTION
@@ -379,7 +424,42 @@ END;
 $$;
 
 
-ALTER FUNCTION webapi."UpdateArmyRanksOrder"(army_guid bigint, rank_ids integer[], OUT result boolean) OWNER TO tmwadmin;
+ALTER FUNCTION webapi."UpdateArmyRanks"(army_guid bigint, initiator_rank_position integer, ranks_json text, OUT result boolean) OWNER TO tmwadmin;
+
+--
+-- Name: UpdateArmyRanksOrder(bigint, integer, bigint[]); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE FUNCTION webapi."UpdateArmyRanksOrder"(army_guid bigint, initiator_rank_position integer, rank_ids bigint[], OUT result boolean) RETURNS boolean
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    WITH protected_ranks AS (
+        SELECT army_rank_id, COUNT(*) OVER () as count_protected
+        FROM webapi."ArmyRanks" ar
+        WHERE ar.army_guid = "UpdateArmyRanksOrder".army_guid AND position <= initiator_rank_position
+    ),
+    target_order AS (
+        SELECT r_id, ROW_NUMBER() OVER () as new_position
+        FROM unnest(rank_ids) r_id
+        WHERE r_id NOT IN (SELECT army_rank_id FROM protected_ranks)
+    )
+    UPDATE webapi."ArmyRanks" ar2 
+    SET position   = tor.new_position + pr.count_protected,
+        updated_at = CURRENT_TIMESTAMP
+    FROM target_order tor, (SELECT count_protected FROM protected_ranks LIMIT 1) pr
+    WHERE ar2.army_rank_id = tor.r_id AND ar2.army_guid = "UpdateArmyRanksOrder".army_guid;
+
+    result := TRUE;
+EXCEPTION
+    WHEN OTHERS THEN
+        result := FALSE;
+        RAISE;
+END;
+$$;
+
+
+ALTER FUNCTION webapi."UpdateArmyRanksOrder"(army_guid bigint, initiator_rank_position integer, rank_ids bigint[], OUT result boolean) OWNER TO tmwadmin;
 
 --
 -- Name: create_entity_guid(integer); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
@@ -411,6 +491,227 @@ COMMENT ON FUNCTION webapi.create_entity_guid("Type" integer) IS 'Create an enti
 
 Based on https://gist.github.com/SilentCLD/881839a9f45578f1618db012fc789a71 ';
 
+
+--
+-- Name: notify_on_army_application_events(); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE FUNCTION webapi.notify_on_army_application_events() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    payload json;
+    armyName text;
+    initiatorName text;
+    armyMemberGuids bigint[];
+    armyGuid bigint := (CASE WHEN TG_OP = 'DELETE' THEN OLD.army_guid ELSE NEW.army_guid END);
+    inviterGuid bigint := NEW.inviter_guid;
+BEGIN
+    SELECT ARRAY(
+       SELECT character_guid
+       FROM webapi."ArmyMembers" am
+                INNER JOIN webapi."ArmyRanks" ar on ar.army_rank_id = am.army_rank_id
+       WHERE am.army_guid = armyGuid
+         AND ar.can_invite = TRUE)
+    INTO armyMemberGuids;
+
+    payload := json_build_object('ArmyMemberGuids', armyMemberGuids);
+    PERFORM pg_notify('events', 'ArmyApplicationsUpdated->' || payload::text);
+
+    IF TG_OP = 'INSERT' THEN
+        IF inviterGuid IS NOT NULL THEN
+            SELECT name
+            INTO armyName
+            FROM webapi."Armies"
+            WHERE army_guid = armyGuid;
+
+            SELECT name
+            INTO initiatorName
+            FROM webapi."Characters"
+            WHERE character_guid = inviterGuid;
+
+            payload := json_build_object(
+                'ArmyGuid', armyGuid,
+                'ArmyName', armyName,
+                'CharacterGuid', NEW.character_guid,
+                'Id', NEW.id,
+                'Message', NEW.message,
+                'InitiatorName', initiatorName
+            );
+            PERFORM pg_notify('events', 'ArmyInviteReceived->' || payload::text);
+        ELSE
+            SELECT name
+            INTO initiatorName
+            FROM webapi."Characters"
+            WHERE character_guid = NEW.character_guid;
+
+            payload := json_build_object('ArmyMemberGuids', armyMemberGuids, 'InitiatorName', initiatorName);
+            PERFORM pg_notify('events', 'ArmyApplicationReceived->' || payload::text);
+        END IF;
+    ELSIF TG_OP = 'DELETE' THEN
+        IF (SELECT EXISTS (SELECT 1 FROM webapi."ArmyMembers" am
+                                JOIN webapi."Characters" c USING (character_guid)
+                           WHERE c.character_guid = OLD.character_guid
+                             AND am.army_guid = OLD.army_guid))
+        THEN
+            RETURN NULL;
+        END IF;
+
+        IF OLD.inviter_guid IS NULL THEN
+            SELECT name
+            INTO armyName
+            FROM webapi."Armies"
+            WHERE army_guid = armyGuid;
+
+            SELECT name
+            INTO initiatorName
+            FROM webapi."Characters"
+            WHERE character_guid = OLD.character_guid;
+
+            payload := json_build_object(
+                'CharacterGuid', OLD.character_guid,
+                'InitiatorName', armyName
+            );
+            PERFORM pg_notify('events', 'ArmyApplicationRejected->' || payload::text);
+        ELSE
+            SELECT name
+            INTO initiatorName
+            FROM webapi."Characters"
+            WHERE character_guid = OLD.character_guid;
+
+            payload := json_build_object(
+                'ArmyMemberGuids', armyMemberGuids,
+                'InitiatorName', initiatorName
+            );
+            PERFORM pg_notify('events', 'ArmyInviteRejected->' || payload::text);
+        END IF;
+    END IF;
+
+    RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION webapi.notify_on_army_application_events() OWNER TO tmwadmin;
+
+--
+-- Name: notify_on_army_events(); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE FUNCTION webapi.notify_on_army_events() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    payload json;
+BEGIN
+    IF (OLD.tag IS NULL AND NEW.tag IS NOT NULL) OR NEW.tag <> OLD.tag THEN
+        payload := json_build_object('ArmyGuid', NEW.army_guid, 'ArmyTag', NEW.tag);
+        PERFORM pg_notify('events', 'ArmyTagUpdated->' || payload::text);
+    END IF;
+
+    payload := json_build_object('ArmyGuid', NEW.army_guid);
+    PERFORM pg_notify('events', 'ArmyInfoUpdated->' || payload::text);
+
+    RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION webapi.notify_on_army_events() OWNER TO tmwadmin;
+
+--
+-- Name: notify_on_army_member_events(); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE FUNCTION webapi.notify_on_army_member_events() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    payload json;
+    isOfficer boolean;
+    armyTag text;
+BEGIN
+    IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+        SELECT is_officer
+        INTO isOfficer
+        FROM webapi."ArmyRanks"
+        WHERE army_rank_id = NEW.army_rank_id;
+        
+        SELECT tag
+        INTO armyTag
+        FROM webapi."Armies"
+        WHERE army_guid = NEW.army_guid;
+
+        payload := json_build_object(
+            'ArmyGuid', NEW.army_guid,
+            'CharacterGuid', NEW.character_guid,
+            'IsOfficer', isOfficer,
+            'ArmyTag', COALESCE(armyTag, '')
+        );
+        PERFORM pg_notify('events', 'ArmyIdChanged->' || payload::text);
+        
+        PERFORM pg_notify('events', 'ArmyMembersUpdated->' || json_build_object('ArmyGuid', NEW.army_guid)::text);
+    ELSE
+        payload := json_build_object('ArmyGuid', 0, 'CharacterGuid', OLD.character_guid, 'IsOfficer', false, 'ArmyTag', '');
+        PERFORM pg_notify('events', 'ArmyIdChanged->' || payload::text);
+        
+        PERFORM pg_notify('events', 'ArmyMembersUpdated->' || json_build_object('ArmyGuid', OLD.army_guid)::text);
+        
+        IF (SELECT count(*) FROM webapi."ArmyMembers" WHERE army_guid = OLD.army_guid) < 3 THEN
+            UPDATE webapi."Armies" SET tag = NULL WHERE army_guid = OLD.army_guid;
+            
+            PERFORM pg_notify('events', 'ArmyTagUpdated->' || json_build_object('ArmyGuid', OLD.army_guid, 'ArmyTag', '')::text);
+        END IF;
+    END IF;
+    
+    RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION webapi.notify_on_army_member_events() OWNER TO tmwadmin;
+
+--
+-- Name: notify_on_army_rank_events(); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE FUNCTION webapi.notify_on_army_rank_events() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    payload json;
+    armyGuid bigint := (CASE WHEN TG_OP = 'DELETE' THEN OLD.army_guid ELSE NEW.army_guid END);
+BEGIN
+    payload := json_build_object('ArmyGuid', armyGuid);
+    PERFORM pg_notify('events', 'ArmyRanksUpdated->' || payload::text);
+
+    RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION webapi.notify_on_army_rank_events() OWNER TO tmwadmin;
+
+--
+-- Name: notify_on_character_events(); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE FUNCTION webapi.notify_on_character_events() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    payload json;
+BEGIN
+    IF OLD.gender != NEW.gender OR OLD.race != NEW.race OR OLD.visuals != NEW.visuals THEN
+        payload := json_build_object('CharacterGuid', NEW.character_guid);
+        PERFORM pg_notify('events', 'CharacterVisualsUpdated->' || payload::text);
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION webapi.notify_on_character_events() OWNER TO tmwadmin;
 
 SET default_tablespace = '';
 
@@ -506,7 +807,7 @@ CREATE TABLE webapi."ArmyApplications" (
     character_guid bigint NOT NULL,
     message text NOT NULL,
     id bigint NOT NULL,
-    invite boolean DEFAULT false NOT NULL
+    inviter_guid bigint
 );
 
 
@@ -569,7 +870,7 @@ CREATE TABLE webapi."ArmyRanks" (
     army_rank_id bigint NOT NULL,
     army_guid bigint NOT NULL,
     name character varying(255) NOT NULL,
-    "position" integer NOT NULL,
+    "position" smallint NOT NULL,
     is_commander boolean DEFAULT false NOT NULL,
     can_invite boolean DEFAULT false NOT NULL,
     can_edit boolean DEFAULT false NOT NULL,
@@ -981,14 +1282,6 @@ ALTER TABLE ONLY webapi."ArmyApplications"
 
 
 --
--- Name: ArmyRanks ArmyRanks_army_guid_position; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
---
-
-ALTER TABLE ONLY webapi."ArmyRanks"
-    ADD CONSTRAINT "ArmyRanks_army_guid_position" UNIQUE (army_guid, "position");
-
-
---
 -- Name: ArmyRanks ArmyRanks_army_rank_guid; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -1164,6 +1457,41 @@ CREATE UNIQUE INDEX vip_data_account_id_uindex ON webapi."VipData" USING btree (
 
 
 --
+-- Name: ArmyApplications army_application_events_trigger; Type: TRIGGER; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TRIGGER army_application_events_trigger AFTER INSERT OR DELETE OR UPDATE ON webapi."ArmyApplications" FOR EACH ROW EXECUTE FUNCTION webapi.notify_on_army_application_events();
+
+
+--
+-- Name: Armies army_events_trigger; Type: TRIGGER; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TRIGGER army_events_trigger AFTER UPDATE ON webapi."Armies" FOR EACH ROW EXECUTE FUNCTION webapi.notify_on_army_events();
+
+
+--
+-- Name: ArmyMembers army_member_events_trigger; Type: TRIGGER; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TRIGGER army_member_events_trigger AFTER INSERT OR DELETE OR UPDATE ON webapi."ArmyMembers" FOR EACH ROW EXECUTE FUNCTION webapi.notify_on_army_member_events();
+
+
+--
+-- Name: ArmyRanks army_rank_events_trigger; Type: TRIGGER; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TRIGGER army_rank_events_trigger AFTER INSERT OR DELETE OR UPDATE ON webapi."ArmyRanks" FOR EACH ROW EXECUTE FUNCTION webapi.notify_on_army_rank_events();
+
+
+--
+-- Name: Characters character_events_trigger; Type: TRIGGER; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TRIGGER character_events_trigger AFTER UPDATE ON webapi."Characters" FOR EACH ROW EXECUTE FUNCTION webapi.notify_on_character_events();
+
+
+--
 -- Name: ArmyApplications ArmyApplications_army_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -1177,6 +1505,14 @@ ALTER TABLE ONLY webapi."ArmyApplications"
 
 ALTER TABLE ONLY webapi."ArmyApplications"
     ADD CONSTRAINT "ArmyApplications_character_guid_fkey" FOREIGN KEY (character_guid) REFERENCES webapi."Characters"(character_guid);
+
+
+--
+-- Name: ArmyApplications ArmyApplications_inviter_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."ArmyApplications"
+    ADD CONSTRAINT "ArmyApplications_inviter_guid_fkey" FOREIGN KEY (inviter_guid) REFERENCES webapi."Characters"(character_guid);
 
 
 --

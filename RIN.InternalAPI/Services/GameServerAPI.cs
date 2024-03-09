@@ -1,4 +1,7 @@
-﻿using RIN.Core.DB;
+﻿using System.Text.Json;
+using Grpc.Core;
+using Npgsql;
+using RIN.Core.DB;
 using RIN.InternalAPI.Models;
 
 namespace RIN.InternalAPI.Services
@@ -38,6 +41,57 @@ namespace RIN.InternalAPI.Services
             };
 
             return resp;
+        }
+
+        public async Task Listen(EmptyReq req, IServerStreamWriter<Event> responseStream, ServerCallContext context)
+        {
+            await using var connection = new NpgsqlConnection(DB.ConnStr);
+            await connection.OpenAsync();
+
+            await using var cmd = new NpgsqlCommand("LISTEN events", connection);
+            await cmd.ExecuteNonQueryAsync();
+
+            connection.Notification += async (_, e) =>
+            {
+                var dbEvent = e.Payload.Split(["->"], StringSplitOptions.None);
+                var eventType = dbEvent[0];
+                var payloadJson = dbEvent[1];
+
+                var type = Type.GetType($"RIN.InternalAPI.Models.{eventType}");
+
+                if (type == null)
+                {
+                    Logger.LogError("Unknown event type: {eventType}", eventType);
+                    return;
+                }
+
+                var payload = JsonSerializer.Deserialize(payloadJson, type);
+
+                if (payload is not Event evt)
+                {
+                    Logger.LogError("Failed to deserialize payload for event type: {eventType}", eventType);
+                    return;
+                }
+
+                if (evt is CharacterVisualsUpdated cvu)
+                {
+                    var updatedVisuals = await GetCharacterAndBattleframeVisuals(
+                        new CharacterID { ID = (long)cvu.CharacterGuid });
+
+                    cvu.CharacterAndBattleframeVisuals = updatedVisuals;
+
+                    await responseStream.WriteAsync(cvu);
+                }
+                else
+                {
+                    await responseStream.WriteAsync(evt);
+                }
+            };
+
+            while (!context.CancellationToken.IsCancellationRequested)
+            {
+                await connection.WaitAsync(context.CancellationToken);
+            }
         }
     }
 }

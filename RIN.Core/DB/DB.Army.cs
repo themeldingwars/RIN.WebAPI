@@ -273,22 +273,21 @@ namespace RIN.Core.DB
             return results.ToList();
         }
 
-        public async Task<bool> AddArmyRank(long armyGuid, bool canPromote, bool canEdit,
-            bool isOfficer, string name, bool canInvite, bool canKick, uint position)
+        public async Task<ArmyRank> AddArmyRank(long armyGuid, bool canPromote, bool canEdit,
+            bool isOfficer, string name, bool canInvite, bool canKick, short position)
         {
             const string INSERT_SQL = @"
                 INSERT INTO webapi.""ArmyRanks"" (
                       army_guid, can_promote, can_edit, 
-                      is_officer, name, can_invite, can_kick, position, created_at)
+                      is_officer, name, can_invite, can_kick, position)
                 VALUES (@armyGuid, @canPromote, @canEdit, 
-                        @isOfficer, @name, @canInvite, @canKick, @position, NOW());";
+                        @isOfficer, @name, @canInvite, @canKick, @position)
+                RETURNING *;";
 
-            var result = await DBCall(async conn => await conn.ExecuteAsync(
+            return await DBCall(async conn => await conn.QuerySingleAsync<ArmyRank>(
                 INSERT_SQL,
                 new { armyGuid, canPromote, canEdit, isOfficer, name, canInvite, canKick, position }
             ));
-
-            return result > 0;
         }
 
         public async Task<bool> ReassignMembersAndRemoveArmyRank(long armyGuid, long rankId, long defaultRankId)
@@ -315,33 +314,29 @@ namespace RIN.Core.DB
             return result > 0;
         }
 
-        public async Task<bool> UpdateArmyRank(long armyGuid, int initiatorRankPosition, long rankId, bool canPromote, bool canEdit,
-            bool isOfficer, string? name, bool canInvite, bool canKick)
+        public async Task<bool> UpdateArmyRanks(long armyGuid, short initiatorRankPosition, string armyRanks)
         {
-            const string UPDATE_SQL = @"
-                UPDATE webapi.""ArmyRanks""
-                SET 
-                    name = COALESCE(@name, name),
-                    can_edit = @canEdit,
-                    can_invite = @canInvite,
-                    can_kick = @canKick,
-                    is_officer = @isOfficer,
-                    can_promote = @canPromote,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE army_guid = @armyGuid AND army_rank_id = @rankId AND position > @initiatorRankPosition;";
+            var p = new DynamicParameters();
+            p.Add("@army_guid", armyGuid);
+            p.Add("@initiator_rank_position", initiatorRankPosition);
+            p.Add("@ranks_json", armyRanks);
+            p.Add("@result", dbType: DbType.Boolean, direction: ParameterDirection.Output);
 
-            var result = await DBCall(async conn => await conn.ExecuteAsync(
-                UPDATE_SQL,
-                new { armyGuid, initiatorRankPosition, rankId, name, canEdit, canInvite, canKick, isOfficer, canPromote }
-            ));
+            return await DBCall(async conn =>
+                {
+                    await conn.ExecuteAsync("webapi.\"UpdateArmyRanks\"", p,
+                        commandType: CommandType.StoredProcedure);
 
-            return result > 0;
+                    return p.Get<bool>("@result");
+                }
+            );
         }
 
-        public async Task<bool> UpdateArmyRanksOrder(long armyGuid, int[] rankIds)
+        public async Task<bool> UpdateArmyRanksOrder(long armyGuid, short initiatorRankPosition, long[] rankIds)
         {
             var p = new DynamicParameters();
             p.Add("army_guid", armyGuid);
+            p.Add("@initiator_rank_position", initiatorRankPosition);
             p.Add("rank_ids", rankIds);
             p.Add("result", dbType: DbType.Boolean, direction: ParameterDirection.Output);
 
@@ -498,19 +493,20 @@ namespace RIN.Core.DB
                     'apply' as direction
                 FROM webapi.""ArmyApplications"" aa
                 INNER JOIN webapi.""Characters"" c USING (character_guid)
-                WHERE army_guid = @armyGuid AND invite = false";
+                WHERE army_guid = @armyGuid AND inviter_guid IS NULL";
 
-            var results = await DBCall(async conn => await conn.QueryAsync<dynamic>(SELECT_SQL, new { armyGuid }));
+            var results = await DBCall(async conn => await conn.QueryAsync<ArmyApplication>(SELECT_SQL, new { armyGuid }));
 
             return results;
         }
 
-         public async Task<bool> ApproveArmyApplicationsOrInvites(long armyGuid, long[] applicationIds)
+         public async Task<bool> ApproveArmyApplicationsOrInvites(long armyGuid, long initiatorGuid, long[] applicationIds)
          {
              var result = await DBCall(async conn =>
              {
                  var p = new DynamicParameters();
                  p.Add("@army_guid", armyGuid);
+                 p.Add("@initiator_guid", initiatorGuid);
                  p.Add("@application_ids", applicationIds);
 
                  p.Add("@result", dbType: DbType.Boolean, direction: ParameterDirection.Output);
@@ -538,7 +534,7 @@ namespace RIN.Core.DB
             return result > 0;
         }
 
-        public async Task<bool> InviteToArmy(long armyGuid, string characterName, string message)
+        public async Task<bool> InviteToArmy(long armyGuid, string characterName, string message, long inviterGuid)
         {
             var result = await DBCall(async conn =>
             {
@@ -546,6 +542,7 @@ namespace RIN.Core.DB
                 p.Add("@army_guid", armyGuid);
                 p.Add("@character_name", characterName);
                 p.Add("@message", message);
+                p.Add("@inviter_guid", inviterGuid);
 
                 p.Add("@result", dbType: DbType.Boolean, direction: ParameterDirection.Output);
                 p.Add("@error_text", dbType: DbType.String, direction: ParameterDirection.Output);
@@ -600,7 +597,7 @@ namespace RIN.Core.DB
                 SELECT EXISTS (
                     SELECT 1
                     FROM webapi.""ArmyApplications""
-                    WHERE army_guid = @armyGuid AND character_guid = @characterGuid AND invite = true
+                    WHERE army_guid = @armyGuid AND character_guid = @characterGuid AND inviter_guid IS NOT NULL
                 );";
 
             return await DBCall(async conn => await conn.QuerySingleAsync<bool>(SELECT_SQL, new { armyGuid, characterGuid }));
@@ -618,7 +615,7 @@ namespace RIN.Core.DB
             return await DBCall(async conn => await conn.QuerySingleAsync<bool>(SELECT_SQL, new { armyGuid, characterGuid }));
         }
 
-        public async Task<int> GetArmyRankPosition(long armyGuid, long characterGuid)
+        public async Task<short> GetArmyRankPosition(long armyGuid, long characterGuid)
         {
             const string SELECT_SQL = @"
                 SELECT ar.position
@@ -626,7 +623,7 @@ namespace RIN.Core.DB
                 INNER JOIN webapi.""ArmyRanks"" ar ON am.army_rank_id = ar.army_rank_id
                 WHERE am.army_guid = @armyGuid AND am.character_guid = @characterGuid;";
 
-            var rankPosition = await DBCall(async conn => await conn.QuerySingleAsync<int>(SELECT_SQL, new { armyGuid, characterGuid }));
+            var rankPosition = await DBCall(async conn => await conn.QuerySingleAsync<short>(SELECT_SQL, new { armyGuid, characterGuid }));
 
             return rankPosition;
         }
@@ -643,14 +640,12 @@ namespace RIN.Core.DB
 
         public async Task<bool> IsArmyRecruiting(long armyGuid)
         {
-            const string IS_RECRUITING_SQL = @"
+            const string SELECT_SQL = @"
                 SELECT is_recruiting
                 FROM webapi.""Armies""
                 WHERE army_guid = @armyGuid;";
 
-            var isRecruiting = await DBCall(async conn => await conn.QuerySingleAsync<bool>(IS_RECRUITING_SQL, new { armyGuid }));
-
-            return isRecruiting;
+            return await DBCall(async conn => await conn.QuerySingleAsync<bool>(SELECT_SQL, new { armyGuid }));
         }
     }
 }

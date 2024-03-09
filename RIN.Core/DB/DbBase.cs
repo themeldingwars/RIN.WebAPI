@@ -13,7 +13,7 @@ namespace RIN.Core.DB
         protected DbConnectionSettings Config;
         protected readonly ILogger    Logger;
 
-        protected string ConnStr;
+        public    string ConnStr;
         protected bool   LogDbTimes;
         
         public DbBase(IOptions<DbConnectionSettings> config, ILogger<DbBase> logger)

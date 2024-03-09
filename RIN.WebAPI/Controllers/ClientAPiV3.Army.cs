@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 using RIN.Core;
 using RIN.Core.ClientApi;
 using RIN.Core.Models.ClientApi;
@@ -204,10 +205,8 @@ namespace RIN.WebAPI.Controllers
                 );
             }
 
-            var result = await Db.AddArmyRank(armyGuid, req.can_promote, req.can_edit, req.is_officer,
+            return await Db.AddArmyRank(armyGuid, req.can_promote, req.can_edit, req.is_officer,
                 req.name, req.can_invite, req.can_kick, req.position);
-
-            return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to add rank to the army.");
         }
 
         [HttpDelete("armies/{armyGuid}/ranks/{rankId}")]
@@ -260,29 +259,11 @@ namespace RIN.WebAPI.Controllers
 
             var initiatorRankPosition = await Db.GetArmyRankPosition(armyGuid, GetCid());
 
-            var tasks = req.Select(rank =>
-                Db.UpdateArmyRank(armyGuid, initiatorRankPosition, rank.id, rank.can_promote, rank.can_edit,
-                    rank.is_officer, rank.name, rank.can_invite, rank.can_kick)
-            ).ToList();
+            var armyRanks = JsonSerializer.Serialize(req);
 
-            await Task.WhenAll(tasks);
+            var result = await Db.UpdateArmyRanks(armyGuid, initiatorRankPosition, armyRanks);
 
-            var successCount = tasks.Count(t => t.Result);
-
-            var skippedCount = req.Count - successCount;
-
-            if (skippedCount > 0)
-            {
-                return ReturnError(
-                    Error.Codes.ERR_UNKNOWN,
-                    $"Updated {successCount} ranks, skipped {skippedCount} ranks of higher position than your rank.",
-                    StatusCodes.Status422UnprocessableEntity
-                );
-            }
-
-            return successCount > 0
-                ? new { }
-                : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to update army ranks.");
+            return result ? new { } : ReturnError(Error.Codes.TMW_MSG, "Failed to update army ranks.");
         }
 
         [HttpPut("armies/{armyGuid}/ranks/batch_order")]
@@ -300,7 +281,9 @@ namespace RIN.WebAPI.Controllers
                 );
             }
 
-            var result = await Db.UpdateArmyRanksOrder(armyGuid, req.army_rank_ids);
+            var initiatorRankPosition = await Db.GetArmyRankPosition(armyGuid, GetCid());
+
+            var result = await Db.UpdateArmyRanksOrder(armyGuid, initiatorRankPosition, req.army_rank_ids);
 
             return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to update ranks order.");
         }
@@ -468,7 +451,7 @@ namespace RIN.WebAPI.Controllers
                 );
             }
 
-            var result = await Db.ApproveArmyApplicationsOrInvites(armyGuid, applicationIds);
+            var result = await Db.ApproveArmyApplicationsOrInvites(armyGuid, GetCid(), applicationIds);
 
             return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to approve army applications.");
         }
@@ -481,7 +464,7 @@ namespace RIN.WebAPI.Controllers
         {
             if (await Db.HasInviteFromArmy(armyGuid, GetCid()))
             {
-                return await Db.ApproveArmyApplicationsOrInvites(armyGuid, [id])
+                return await Db.ApproveArmyApplicationsOrInvites(armyGuid, GetCid(), [id])
                     ? new { }
                     : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to approve army invite.");
             }
@@ -495,7 +478,7 @@ namespace RIN.WebAPI.Controllers
                 );
             }
 
-            var result = await Db.ApproveArmyApplicationsOrInvites(armyGuid, [id]);
+            var result = await Db.ApproveArmyApplicationsOrInvites(armyGuid, GetCid(), [id]);
 
             return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to approve army application.");
         }
@@ -562,7 +545,7 @@ namespace RIN.WebAPI.Controllers
                 );
             }
 
-            var result = await Db.InviteToArmy(armyGuid, req.character_name, req.message);
+            var result = await Db.InviteToArmy(armyGuid, req.character_name, req.message, GetCid());
 
             return result ? new { } : ReturnError(Error.Codes.ERR_UNKNOWN, "Failed to invite to army.");
         }

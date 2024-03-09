@@ -4,6 +4,7 @@ using ProtoBuf;
 using RIN.Core.ClientApi;
 using RIN.Core.Common;
 using RIN.Core.Models;
+using RIN.Core.Models.ClientApi;
 using RIN.Core.Utils;
 
 namespace RIN.Core.DB
@@ -122,7 +123,8 @@ namespace RIN.Core.DB
 
         public async Task<(BasicCharacterInfo info, CharacterVisuals visuals)> GetBasicCharacterAndVisualData(long charId)
         {
-            const string SELECT_SQL = @"SELECT c.name, title_id, gender, race, current_battleframe_guid, bf.battleframe_sdb_id AS CurrentBattleframeSDBId, a.tag as ArmyTag, c.visuals
+            const string SELECT_SQL = @"SELECT c.name, title_id, gender, race, current_battleframe_guid, bf.battleframe_sdb_id AS CurrentBattleframeSDBId, 
+                                a.tag as ArmyTag, a.army_guid as ArmyGUID, ar.is_officer as ArmyIsOfficer, c.visuals
 	                        FROM webapi.""Characters"" as c
                                 LEFT JOIN
 					                webapi.""Battleframes"" as bf
@@ -131,6 +133,8 @@ namespace RIN.Core.DB
 	                                    ON c.character_guid = am.character_guid
 	                            LEFT JOIN webapi.""Armies"" as a 
 	                                    ON am.army_guid = a.army_guid
+	                            LEFT JOIN webapi.""ArmyRanks"" as ar
+	                                    ON am.army_rank_id = ar.army_rank_id
 	                        WHERE c.character_guid = @charId";
 
             var result = await DBCall(async conn => conn.Query<BasicCharacterInfo, byte[], (BasicCharacterInfo, CharacterVisuals)>(
@@ -314,28 +318,26 @@ namespace RIN.Core.DB
             return results.Any();
         }
 
-        public async Task<object> GetPersonalArmyApplications(long characterGuid)
+        public async Task<IEnumerable<ArmyApplication>> GetPersonalArmyApplications(long characterGuid)
         {
             const string SELECT_SQL = @"
                 SELECT id, a.name AS army_name, army_guid, character_guid, message, 'apply' as direction 
                 FROM webapi.""ArmyApplications"" aa
                 INNER JOIN webapi.""Armies"" a USING(army_guid)
-                WHERE character_guid = @characterGuid AND invite = false";
+                WHERE character_guid = @characterGuid AND inviter_guid IS NULL";
 
-            var results = await DBCall(async conn => await conn.QueryAsync<dynamic>(SELECT_SQL, new {characterGuid}));
-
-            return results;
+            return await DBCall(async conn => await conn.QueryAsync<ArmyApplication>(SELECT_SQL, new {characterGuid}));
         }
 
-        public async Task<object> GetPersonalArmyInvites(long characterGuid)
+        public async Task<IEnumerable<ArmyApplication>> GetPersonalArmyInvites(long characterGuid)
         {
             const string SELECT_SQL = @"
                 SELECT id, a.name AS army_name, army_guid, character_guid, message, 'invite' AS direction 
                 FROM webapi.""ArmyApplications"" aa
                 INNER JOIN webapi.""Armies"" a USING(army_guid)
-                WHERE character_guid = @characterGuid AND invite = true";
+                WHERE character_guid = @characterGuid AND inviter_guid IS NOT NULL";
 
-            var results = await DBCall(async conn => await conn.QueryAsync<dynamic>(SELECT_SQL, new {characterGuid}));
+            var results = await DBCall(async conn => await conn.QueryAsync<ArmyApplication>(SELECT_SQL, new {characterGuid}));
 
             return results;
         }
