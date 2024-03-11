@@ -50,6 +50,7 @@ namespace RIN.WebAPI.Controllers
         }
 
         protected string GetUid() => HttpUtility.UrlDecode(GetRed5Sig().UID.ToString());
+        protected long GetCid() => long.TryParse(HttpUtility.UrlDecode(GetRed5Sig().Cid.ToString()), out var cid) ? cid : 0;
 
         protected ContentResult ReturnError(string errorCode, string errorMessage, int statusCode = 500)
         {

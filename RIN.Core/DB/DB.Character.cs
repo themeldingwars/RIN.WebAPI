@@ -4,6 +4,7 @@ using ProtoBuf;
 using RIN.Core.ClientApi;
 using RIN.Core.Common;
 using RIN.Core.Models;
+using RIN.Core.Models.ClientApi;
 using RIN.Core.Utils;
 
 namespace RIN.Core.DB
@@ -122,12 +123,19 @@ namespace RIN.Core.DB
 
         public async Task<(BasicCharacterInfo info, CharacterVisuals visuals)> GetBasicCharacterAndVisualData(long charId)
         {
-            const string SELECT_SQL = @"SELECT name, title_id, gender, race, current_battleframe_guid, bf.battleframe_sdb_id AS CurrentBattleframeSDBId, webapi.""Characters"".visuals
-	                        FROM webapi.""Characters""
+            const string SELECT_SQL = @"SELECT c.name, title_id, gender, race, current_battleframe_guid, bf.battleframe_sdb_id AS CurrentBattleframeSDBId, 
+                                a.tag as ArmyTag, a.army_guid as ArmyGUID, ar.is_officer as ArmyIsOfficer, c.visuals
+	                        FROM webapi.""Characters"" as c
                                 LEFT JOIN
 					                webapi.""Battleframes"" as bf
-						                ON bf.id = webapi.""Characters"".current_battleframe_guid
-	                        WHERE webapi.""Characters"".character_guid = @charId";
+						                ON bf.id = c.current_battleframe_guid
+	                            LEFT JOIN webapi.""ArmyMembers"" as am 
+	                                    ON c.character_guid = am.character_guid
+	                            LEFT JOIN webapi.""Armies"" as a 
+	                                    ON am.army_guid = a.army_guid
+	                            LEFT JOIN webapi.""ArmyRanks"" as ar
+	                                    ON am.army_rank_id = ar.army_rank_id
+	                        WHERE c.character_guid = @charId";
 
             var result = await DBCall(async conn => conn.Query<BasicCharacterInfo, byte[], (BasicCharacterInfo, CharacterVisuals)>(
                 SELECT_SQL,
@@ -167,7 +175,6 @@ namespace RIN.Core.DB
             return result > 0;
         }
 
-        // TODO: Check if character is an army commander and prevent delete process if true
         public async Task<Error> SetPendingDeleteCharacterById(long accountId, long characterGuid)
         {
             // TODO: Move calls to be inside the database to make a single DB call
@@ -184,6 +191,22 @@ namespace RIN.Core.DB
             if (char_select_results.Count() == 0)
             {
                 return new Error() { code = Error.Codes.ERR_CHAR_NOT_FOUND, message = "Can't find a character with that GUID" };
+            }
+
+            // Check if character is an army commander and prevent delete process if true
+            const string IS_COMMANDER_SQL = @"SELECT 
+                            character_guid
+                            FROM webapi.""ArmyMembers"" am
+                            INNER JOIN webapi.""ArmyRanks"" ar on ar.army_rank_id = am.army_rank_id
+                            WHERE am.character_guid = @characterGuid AND ar.is_commander = true";
+
+            var isCommanderResults = await DBCall(
+                async conn => await conn.QueryAsync<dynamic>(IS_COMMANDER_SQL, new { characterGuid })
+            );
+
+            if (isCommanderResults.Any())
+            {
+                return new Error() { code = Error.Codes.ERR_CANNOT_DELETE_COMMANDER, message = "Character is an army commander" };
             }
 
             // Check if character is already marked for deletion
@@ -276,6 +299,47 @@ namespace RIN.Core.DB
             {
                 return false;
             }
+        }
+        
+        public async Task<bool> IsMemberOfArmy(long characterGuid, long? armyGuid = null)
+        { 
+            string selectSql = @"
+                SELECT character_guid
+                FROM webapi.""ArmyMembers""
+                WHERE character_guid = @characterGuid";
+
+            if (armyGuid != null)
+            {
+                selectSql += " AND army_guid = @armyGuid";
+            }
+
+            var results = await DBCall(async conn => await conn.QueryAsync<dynamic>(selectSql, new { characterGuid, armyGuid }));
+
+            return results.Any();
+        }
+
+        public async Task<IEnumerable<ArmyApplication>> GetPersonalArmyApplications(long characterGuid)
+        {
+            const string SELECT_SQL = @"
+                SELECT id, a.name AS army_name, army_guid, character_guid, message, 'apply' as direction 
+                FROM webapi.""ArmyApplications"" aa
+                INNER JOIN webapi.""Armies"" a USING(army_guid)
+                WHERE character_guid = @characterGuid AND inviter_guid IS NULL";
+
+            return await DBCall(async conn => await conn.QueryAsync<ArmyApplication>(SELECT_SQL, new {characterGuid}));
+        }
+
+        public async Task<IEnumerable<ArmyApplication>> GetPersonalArmyInvites(long characterGuid)
+        {
+            const string SELECT_SQL = @"
+                SELECT id, a.name AS army_name, army_guid, character_guid, message, 'invite' AS direction 
+                FROM webapi.""ArmyApplications"" aa
+                INNER JOIN webapi.""Armies"" a USING(army_guid)
+                WHERE character_guid = @characterGuid AND inviter_guid IS NOT NULL";
+
+            var results = await DBCall(async conn => await conn.QueryAsync<ArmyApplication>(SELECT_SQL, new {characterGuid}));
+
+            return results;
         }
     }
 }

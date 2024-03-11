@@ -1,20 +1,19 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using RIN.Core;
 using RIN.Core.Common;
 using RIN.Core.DB;
 using RIN.Core.DB.SDB;
 using RIN.WebAPI.Models.Config;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using static System.Collections.Specialized.BitVector32;
-using System.Xml.Linq;
 using RIN.WebAPI.Utils;
 
 namespace RIN.WebAPI.Controllers
 {
     [ApiController]
     [Route("Clientapi/api/v3")]
-    public class ClientAPiV3 : TmwController
+    [Produces("application/json")]
+    [ProducesErrorResponseType(typeof(Error))]
+    public partial class ClientAPiV3 : TmwController
     {
         private readonly ServerDefaultsSettings ServerDefaults;
         private readonly ILogger<OperatorController> Logger;

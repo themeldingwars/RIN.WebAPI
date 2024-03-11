@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 using RIN.Core.Config;
 using RIN.Core.DB;
 using RIN.Core.DB.SDB;
@@ -38,6 +39,11 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 {
     //options.JsonSerializerOptions.IgnoreNullValues       = true;
     options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
+
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = actionContext => new TmwBadRequestObjectResult(actionContext.ModelState);
 });
 
 // Config sections
