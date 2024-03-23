@@ -10,11 +10,12 @@ namespace RIN.InternalAPI
     {
         public ValueTask<PingResp> Ping(PingReq req);
         public ValueTask<CharacterAndBattleframeVisuals> GetCharacterAndBattleframeVisuals(CharacterID req);
-        public Task Listen(EmptyReq req, IServerStreamWriter<Event> responseStream, ServerCallContext context);
+        public ValueTask<Empty> SaveCharacterGameSessionData(GameSessionData req);
+        public Task Listen(Empty req, IServerStreamWriter<Event> responseStream, ServerCallContext context);
     }
 
     [ProtoContract]
-    public class EmptyReq()
+    public class Empty()
     {
     }
 }

@@ -369,7 +369,7 @@ namespace RIN.Core.DB
                     c.name,
                     b.battleframe_sdb_id AS current_frame_sdb_id,
                     b.level AS current_level,
-                    448 as last_zone_id,
+                    c.last_zone_id,
                     true as is_online
                 FROM webapi.""ArmyMembers"" am
                 INNER JOIN webapi.""Characters"" c USING (character_guid)

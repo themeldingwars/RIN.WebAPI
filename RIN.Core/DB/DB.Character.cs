@@ -124,7 +124,8 @@ namespace RIN.Core.DB
         public async Task<(BasicCharacterInfo info, CharacterVisuals visuals)> GetBasicCharacterAndVisualData(long charId)
         {
             const string SELECT_SQL = @"SELECT c.name, title_id, gender, race, current_battleframe_guid, bf.battleframe_sdb_id AS CurrentBattleframeSDBId, 
-                                a.tag as ArmyTag, a.army_guid as ArmyGUID, ar.is_officer as ArmyIsOfficer, c.visuals
+                                a.tag as ArmyTag, a.army_guid as ArmyGUID, ar.is_officer as ArmyIsOfficer, 
+                                last_zone_id as LastZoneId, last_outpost_id as LastOutpostId, c.time_played_secs as TimePlayed,  c.visuals
 	                        FROM webapi.""Characters"" as c
                                 LEFT JOIN
 					                webapi.""Battleframes"" as bf
@@ -171,6 +172,19 @@ namespace RIN.Core.DB
 	                            WHERE character_guid = @charId;";
 
             var result = await DBCall(conn => conn.ExecuteAsync(UPDATE_SQL, new { charId, bfId }));
+
+            return result > 0;
+        }
+        
+        public async Task<bool> UpdateCharacterAfterGameSession(long charId, int zoneId, int outpostId, int timePlayed)
+        {
+            const string UPDATE_SQL = @"UPDATE webapi.""Characters""
+                                SET last_zone_id = @zoneId, 
+                                    last_outpost_id = @outpostId, 
+                                    time_played_secs = time_played_secs + @timePlayed
+                                WHERE character_guid = @charId;";
+
+            var result = await DBCall(conn => conn.ExecuteAsync(UPDATE_SQL, new { charId, zoneId, outpostId, timePlayed }));
 
             return result > 0;
         }
