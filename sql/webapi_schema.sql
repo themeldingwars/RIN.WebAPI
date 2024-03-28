@@ -952,7 +952,9 @@ CREATE TABLE webapi."Characters" (
     visuals bytea NOT NULL,
     deleted_at timestamp with time zone,
     expires_in timestamp with time zone,
-    current_battleframe_guid bigint
+    current_battleframe_guid bigint,
+    last_zone_id integer,
+    last_outpost_id integer
 );
 
 

@@ -43,7 +43,14 @@ namespace RIN.InternalAPI.Services
             return resp;
         }
 
-        public async Task Listen(EmptyReq req, IServerStreamWriter<Event> responseStream, ServerCallContext context)
+        public async ValueTask<Empty> SaveCharacterGameSessionData(GameSessionData req)
+        {
+            await DB.UpdateCharacterAfterGameSession((long)req.CharacterId, (int)req.ZoneId, (int)req.OutpostId, (int)req.TimePlayed);
+
+            return new Empty();
+        }
+
+        public async Task Listen(Empty req, IServerStreamWriter<Event> responseStream, ServerCallContext context)
         {
             await using var connection = new NpgsqlConnection(DB.ConnStr);
             await connection.OpenAsync();
