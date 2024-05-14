@@ -1,6 +1,5 @@
 ﻿using Dapper;
 using Newtonsoft.Json;
-using RIN.Core.Models;
 using RIN.Core.Models.ClientApi;
 
 namespace RIN.Core.DB
@@ -9,84 +8,92 @@ namespace RIN.Core.DB
     {
         public async Task<List<ZoneSettings>> GetZoneSettings()
         {
-            const string SELECT_SQL = @"SELECT 
-                    id,
-                    zone_id,
-                    mission_id,
-                    gametype,
-                    instance_type_pool,
-                    is_preview_zone,
-                    displayed_name,
-                    displayed_desc,
-                    description,
-                    displayed_gametype,
-                    cert_required,
-                    xp_bonus,
-                    sort_order,
-                    rotation_priority,
-                    skip_matchmaking,
-                    queueing_enabled,
-                    team_count,
-                    min_players_per_team,
-                    max_players_per_team,
-                    min_players_accept_per_team,
-                    challenge_enabled,
-                    challenge_min_players_per_team,
-                    challenge_max_players_per_team,
-                    images AS imageStr
-                FROM webapi.""ZoneSettings""
-                WHERE is_active = True";
+            const string SELECT_SQL = @"
+                SELECT
+                   zs.id,
+                   zs.zone_id,
+                   zs.mission_id,
+                   zs.gametype,
+                   zs.instance_type_pool,
+                   zs.is_preview_zone,
+                   zs.displayed_name,
+                   zs.displayed_desc,
+                   zs.description,
+                   zs.displayed_gametype,
+                   zs.cert_required,
+                   zs.xp_bonus,
+                   zs.sort_order,
+                   zs.rotation_priority,
+                   zs.skip_matchmaking,
+                   zs.queueing_enabled,
+                   zs.team_count,
+                   zs.min_players_per_team,
+                   zs.max_players_per_team,
+                   zs.min_players_accept_per_team,
+                   zs.challenge_enabled,
+                   zs.challenge_min_players_per_team,
+                   zs.challenge_max_players_per_team,
+                   zs.images AS images_json,
+           
+                   zc.id as certificate_id,
+                   zc.zone_setting_id,
+                   zc.cert_id,
+                   zc.authorize_position,
+                   zc.difficulty_key,
+                   zc.presence,
+                    
+                   zd.id as difficulty_id,
+                   zd.zone_setting_id,
+                   zd.difficulty_key,
+                   zd.ui_string,
+                   zd.display_level,
+                   zd.min_level,
+                   zd.max_suggested_level,
+                   zd.min_players,
+                   zd.max_players,
+                   zd.min_players_accept,
+                   zd.group_min_players,
+                   zd.group_max_players
+                FROM webapi.""ZoneSettings"" zs
+                LEFT JOIN webapi.""ZoneCertificates"" zc ON zs.id = zc.zone_setting_id
+                LEFT JOIN webapi.""ZoneDifficulty"" zd ON zs.id = zd.zone_setting_id
+                WHERE zs.is_active = True
+                ORDER BY zs.id";
 
-            var zone_settings = await DBCall(async conn => conn.Query<ZoneSettings, string, ZoneSettings>(SELECT_SQL,
-                (settings, imgStr) =>
-                {
-                    var images = JsonConvert.DeserializeObject<ZoneImages>(imgStr);
-                    settings.images = images;
-                    return settings;
-                },
-                splitOn: "imageStr").ToList());
+            var zoneSettingsDict = new Dictionary<uint, ZoneSettings>();
 
-            return zone_settings;
-        }
+            var list = await DBCall(async conn =>
+            {
+                return await conn.QueryAsync<ZoneSettings, string, ZoneCertRequirements?, ZoneDifficultyLevels?, ZoneSettings>(
+                    SELECT_SQL,
+                    (zoneSettings, zoneImages, zoneCertRequirements, zoneDifficultyLevels) =>
+                    {
+                        if (!zoneSettingsDict.TryGetValue(zoneSettings.id, out var zoneEntry))
+                        {
+                            zoneEntry = zoneSettings;
+                            zoneEntry.cert_requirements = [];
+                            zoneEntry.difficulty_levels = [];
+                            zoneSettingsDict.Add(zoneEntry.id, zoneEntry);
+                        }
 
-        public async Task<List<ZoneCertRequirements>> GetZoneCertRequirements(uint zone_setting_id)
-        {
-            const string SELECT_SQL_CERT = @"SELECT 
-                    id,
-                    zone_setting_id,
-                    cert_id,
-                    authorize_position,
-                    difficulty_key,
-                    presence
-                FROM webapi.""ZoneCertificates""
-                WHERE zone_setting_id = @zone_setting_id";
+                        zoneEntry.images = JsonConvert.DeserializeObject<ZoneImages>(zoneImages);
 
-            var certificates = await DBCall(async conn => conn.Query<ZoneCertRequirements>(SELECT_SQL_CERT).ToList());
+                        if (zoneCertRequirements != null)
+                        {
+                           zoneEntry.cert_requirements.Add(zoneCertRequirements);
+                        }
 
-            return certificates;
-        }
+                        if (zoneDifficultyLevels != null)
+                        {
+                            zoneEntry.difficulty_levels.Add(zoneDifficultyLevels);
+                        }
 
-        public async Task<List<ZoneDifficultyLevels>> GetZoneDifficultyLevels(uint zone_setting_id)
-        {
-            const string SELECT_SQL_DIFFICULTY = @"SELECT 
-                    id,
-                    zone_setting_id,
-                    difficulty_key,
-                    ui_string,
-                    display_level,
-                    min_level,
-                    max_suggested_level,
-                    min_players,
-                    max_players,
-                    min_players_accept,
-                    group_min_players,
-                    group_max_players
-                FROM webapi.""ZoneDifficulty""
-                WHERE zone_setting_id = @zone_setting_id";
+                        return zoneEntry;
+                    },
+                    splitOn: "images_json,certificate_id,difficulty_id");
+            });
 
-            var difficulty = await DBCall(async conn => conn.Query<ZoneDifficultyLevels>(SELECT_SQL_DIFFICULTY).ToList());
-
-            return difficulty;
+            return list.ToList();
         }
     }
 }
