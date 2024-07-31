@@ -61,8 +61,10 @@ namespace RIN.Core.DB
                 ORDER BY zs.id";
 
             var zoneSettingsDict = new Dictionary<uint, ZoneSettings>();
+            var certRequirementsIds = new HashSet<uint>();
+            var difficultyLevelsIds = new HashSet<uint>();
 
-            var list = await DBCall(async conn =>
+            await DBCall(async conn =>
             {
                 return await conn.QueryAsync<ZoneSettings, string, ZoneCertRequirements?, ZoneDifficultyLevels?, ZoneSettings>(
                     SELECT_SQL,
@@ -78,14 +80,16 @@ namespace RIN.Core.DB
 
                         zoneEntry.images = JsonConvert.DeserializeObject<ZoneImages>(zoneImages);
 
-                        if (zoneCertRequirements != null)
+                        if (zoneCertRequirements != null && !certRequirementsIds.Contains(zoneCertRequirements.id))
                         {
                            zoneEntry.cert_requirements.Add(zoneCertRequirements);
+                           certRequirementsIds.Add(zoneCertRequirements.id);
                         }
 
-                        if (zoneDifficultyLevels != null)
+                        if (zoneDifficultyLevels != null && !difficultyLevelsIds.Contains(zoneDifficultyLevels.id))
                         {
                             zoneEntry.difficulty_levels.Add(zoneDifficultyLevels);
+                            difficultyLevelsIds.Add(zoneDifficultyLevels.id);
                         }
 
                         return zoneEntry;
@@ -93,7 +97,7 @@ namespace RIN.Core.DB
                     splitOn: "images_json,certificate_id,difficulty_id");
             });
 
-            return list.ToList();
+            return zoneSettingsDict.Values.ToList();
         }
     }
 }

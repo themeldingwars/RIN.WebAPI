@@ -14,5 +14,10 @@
         public uint   group_max_players   { get; set; }
         public uint   display_level       { get; set; }
         public uint   max_suggested_level { get; set; }
+
+        public uint difficulty_id
+        {
+            set => id = value;
+        }
     }
 }
