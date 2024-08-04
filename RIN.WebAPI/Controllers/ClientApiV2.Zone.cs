@@ -1,5 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using RIN.Core.Models.ClientApi;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 using RIN.WebAPI.Utils;
 
 namespace RIN.WebAPI.Controllers
@@ -8,9 +9,16 @@ namespace RIN.WebAPI.Controllers
     {
         [HttpGet("zone_settings")]
         [R5SigAuthRequired]
-        public async Task<List<ZoneSettings>> ZoneSettings()
+        public async Task<IActionResult> ZoneSettings()
         {
-            return await Db.GetZoneSettings();
+            var response = await Db.GetZoneSettings();
+
+            var options = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+            };
+
+            return new JsonResult(response, options);
         }
     }
 }

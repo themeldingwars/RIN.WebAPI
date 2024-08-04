@@ -18,8 +18,8 @@
         public string                     displayed_gametype             { get; set; }
         public uint                       rotation_priority              { get; set; }
         public uint                       zone_id                        { get; set; }
-        public uint                       mission_id                     { get; set; }
-        public uint                       sort_order                     { get; set; }
+        public uint?                      mission_id                     { get; set; }
+        public uint?                      sort_order                     { get; set; }
         public float                      xp_bonus                       { get; set; }
         public string                     instance_type_pool             { get; set; }
         public ZoneReward                 reward_winner                  { get; set; } = new ZoneReward();
