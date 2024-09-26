@@ -21,11 +21,12 @@ Web API server for the client
 * Run the project as `RIN.WEBAPI` or `RIN.WebAPI CMD`.
     * The difference between these two profiles is `CMD` will only launch RIN while the other profile will also launch Swagger (`https://localhost:5001/swagger/index.html`) in your browser for checking endpoints.
     * When prompted about trusting the `ASP.NET Core SSL Certificate`, select `Yes`.
-        * It is possible you will need to restart RIN/Docker/Firefall after installing the certificate for them to properly regcognize it.
+        * It is possible you will need to restart RIN/Docker/Firefall after installing the certificate for them to properly recognize it.
+    * Don't start PIN's WebHostManager when using PIN and RIN.WebAPI.
 * You will most likely not need to restart `Docker` unless you make DB Schema changes.
 
 ## Contributing / Updating
 If you have made db changes run `sql/ExportSchema.bat` and check in the `webapi_schema.sql` file to make sure the schema changes are shared.
 
 ## Tech / libs used
-* RIN is built on [.NET 7](https://dotnet.microsoft.com/en-us/download/dotnet/7.0).
+* RIN is built on [.NET 8](https://dotnet.microsoft.com/en-us/download/dotnet/8.0).

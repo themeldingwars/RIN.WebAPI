@@ -1,5 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using RIN.Core.Models.ClientApi;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 using RIN.WebAPI.Utils;
 
 namespace RIN.WebAPI.Controllers
@@ -8,24 +9,16 @@ namespace RIN.WebAPI.Controllers
     {
         [HttpGet("zone_settings")]
         [R5SigAuthRequired]
-        public async Task<List<ZoneSettings>> ZoneSettings()
+        public async Task<IActionResult> ZoneSettings()
         {
-            var zones = await Db.GetZoneSettings();
+            var response = await Db.GetZoneSettings();
 
-            var zoneSettings = new List<ZoneSettings>(zones.Count());
-            foreach (var zone in zones)
+            var options = new JsonSerializerOptions
             {
-                var certs = Db.GetZoneCertRequirements(zone.zone_id);
-                var diffLevels = Db.GetZoneDifficultyLevels(zone.zone_id);
-                await Task.WhenAll(certs, diffLevels);
+                DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+            };
 
-                zone.cert_requirements = certs.Result;
-                zone.difficulty_levels = diffLevels.Result;
-
-                zoneSettings.Add(zone);
-            }
-
-            return zoneSettings;
+            return new JsonResult(response, options);
         }
     }
 }

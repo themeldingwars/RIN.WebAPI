@@ -25,15 +25,15 @@ SET row_security = off;
 --
 
 INSERT INTO webapi."ZoneCertificates" (cert_id,zone_setting_id,authorize_position,difficulty_key,presence) VALUES
-	 (3592,1,'all',NULL,'present'),
-	 (784,6,'all',NULL,'present'),
-	 (785,10,'all','NORMAL_MODE','present'),
-	 (4905,10,'all','HARD_MODE','present'),
-	 (3585,13,'all',NULL,'present'),
-	 (3587,14,'all',NULL,'present'),
-	 (3589,15,'all',NULL,'present'),
-	 (3590,16,'all',NULL,'present'),
-	 (3591,17,'all',NULL,'present');
+	 (784,1,'all',NULL,'present'),
+	 (785,5,'all','NORMAL_MODE','present'),
+	 (4905,5,'all','HARD_MODE','present'),
+	 (3585,8,'all',NULL,'present'),
+	 (3587,9,'all',NULL,'present'),
+	 (3589,10,'all',NULL,'present'),
+	 (3590,11,'all',NULL,'present'),
+	 (3591,12,'all',NULL,'present'),
+     (3592,13,'all',NULL,'present');
 
 
 --
