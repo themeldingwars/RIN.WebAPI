@@ -11,13 +11,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.57.0" />
-    <PackageReference Include="protobuf-net.Grpc" Version="1.1.1" />
-    <PackageReference Include="protobuf-net.Grpc.AspNetCore" Version="1.1.1" />
-    <PackageReference Include="protobuf-net.Grpc.Reflection" Version="1.1.1" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.66.0" />
+    <PackageReference Include="protobuf-net.Grpc" Version="1.2.2" />
+    <PackageReference Include="protobuf-net.Grpc.AspNetCore" Version="1.2.2" />
+    <PackageReference Include="protobuf-net.Grpc.Reflection" Version="1.2.2" />
     <PackageReference Include="protobuf-net.Reflection" Version="3.2.12" />
-    <PackageReference Include="Serilog" Version="3.1.2-dev-02097" />
-    <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
+    <PackageReference Include="Serilog" Version="4.1.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
   </ItemGroup>
 
   <ItemGroup>
