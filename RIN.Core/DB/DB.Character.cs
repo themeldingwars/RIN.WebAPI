@@ -189,6 +189,21 @@ namespace RIN.Core.DB
             return result > 0;
         }
 
+        public async Task<bool> SaveLgvRaceFinish(long charId, int leaderboardId, long timeMs)
+        {
+            const string UPSERT_SQL = @"INSERT INTO webapi.""LeaderboardEntries"" AS le (
+                                leaderboard_id, character_guid, value)
+                                VALUES (@leaderboardId, @charId, @timeMs)
+                                ON CONFLICT (leaderboard_id, character_guid)
+                                DO UPDATE SET value = EXCLUDED.value
+                                WHERE EXCLUDED.value < le.value
+                                ";
+
+            var result = await DBCall(conn => conn.ExecuteAsync(UPSERT_SQL, new { charId, leaderboardId, timeMs }));
+
+            return result > 0;
+        }
+
         public async Task<Error> SetPendingDeleteCharacterById(long accountId, long characterGuid)
         {
             // TODO: Move calls to be inside the database to make a single DB call

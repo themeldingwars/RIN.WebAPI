@@ -1037,6 +1037,68 @@ CREATE SEQUENCE webapi."FFUUID_Counter_Seq"
 ALTER TABLE webapi."FFUUID_Counter_Seq" OWNER TO tmwadmin;
 
 --
+-- Name: LeaderboardEntries; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."LeaderboardEntries" (
+    leaderboard_id integer NOT NULL,
+    character_guid bigint NOT NULL,
+    value integer NOT NULL
+);
+
+
+ALTER TABLE webapi."LeaderboardEntries" OWNER TO tmwadmin;
+
+--
+-- Name: Leaderboards; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."Leaderboards" (
+    id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    type smallint NOT NULL,
+    "order" smallint NOT NULL
+);
+
+
+ALTER TABLE webapi."Leaderboards" OWNER TO tmwadmin;
+
+--
+-- Name: COLUMN "Leaderboards".type; Type: COMMENT; Schema: webapi; Owner: tmwadmin
+--
+
+COMMENT ON COLUMN webapi."Leaderboards".type IS '0=resource,1=time';
+
+
+--
+-- Name: COLUMN "Leaderboards"."order"; Type: COMMENT; Schema: webapi; Owner: tmwadmin
+--
+
+COMMENT ON COLUMN webapi."Leaderboards"."order" IS '0=asc,1=desc';
+
+
+--
+-- Name: Leaderboards_id_seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE SEQUENCE webapi."Leaderboards_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE webapi."Leaderboards_id_seq" OWNER TO tmwadmin;
+
+--
+-- Name: Leaderboards_id_seq; Type: SEQUENCE OWNED BY; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER SEQUENCE webapi."Leaderboards_id_seq" OWNED BY webapi."Leaderboards".id;
+
+
+--
 -- Name: LoginEvents; Type: TABLE; Schema: webapi; Owner: tmwadmin
 --
 
@@ -1239,6 +1301,13 @@ ALTER SEQUENCE webapi."ZoneSettings_id_seq" OWNED BY webapi."ZoneSettings".id;
 
 
 --
+-- Name: Leaderboards id; Type: DEFAULT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."Leaderboards" ALTER COLUMN id SET DEFAULT nextval('webapi."Leaderboards_id_seq"'::regclass);
+
+
+--
 -- Name: ZoneCertificates id; Type: DEFAULT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -1324,6 +1393,22 @@ ALTER TABLE ONLY webapi."DeletionQueue"
 
 
 --
+-- Name: LeaderboardEntries LeaderboardEntries_leaderboard_id_character_guid; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."LeaderboardEntries"
+    ADD CONSTRAINT "LeaderboardEntries_leaderboard_id_character_guid" UNIQUE (leaderboard_id, character_guid);
+
+
+--
+-- Name: Leaderboards Leaderboards_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."Leaderboards"
+    ADD CONSTRAINT "Leaderboards_pkey" PRIMARY KEY (id);
+
+
+--
 -- Name: Purchases Purchases_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -1400,6 +1485,13 @@ ALTER TABLE ONLY webapi."VipData"
 --
 
 CREATE UNIQUE INDEX "Armies_name_uindex" ON webapi."Armies" USING btree (lower((name)::text));
+
+
+--
+-- Name: LeaderboardEntries_leaderboard_id_value; Type: INDEX; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE INDEX "LeaderboardEntries_leaderboard_id_value" ON webapi."LeaderboardEntries" USING btree (leaderboard_id, value);
 
 
 --
@@ -1547,6 +1639,22 @@ ALTER TABLE ONLY webapi."ArmyRanks"
 
 ALTER TABLE ONLY webapi."Battleframes"
     ADD CONSTRAINT "Char ID" FOREIGN KEY (character_guid) REFERENCES webapi."Characters"(character_guid) NOT VALID;
+
+
+--
+-- Name: LeaderboardEntries LeaderboardEntries_character_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."LeaderboardEntries"
+    ADD CONSTRAINT "LeaderboardEntries_character_guid_fkey" FOREIGN KEY (character_guid) REFERENCES webapi."Characters"(character_guid) ON DELETE CASCADE;
+
+
+--
+-- Name: LeaderboardEntries LeaderboardEntries_leaderboard_id_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."LeaderboardEntries"
+    ADD CONSTRAINT "LeaderboardEntries_leaderboard_id_fkey" FOREIGN KEY (leaderboard_id) REFERENCES webapi."Leaderboards"(id) ON DELETE CASCADE;
 
 
 --
