@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Net;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Web;
 using FauFau.Net.Web;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Razor;
 using RIN.Core;
+using RIN.Core.DB;
 using RIN.WebAPI.Models.ClientApi;
 using RIN.WebAPI.Utils;
 
@@ -97,6 +100,30 @@ namespace RIN.WebAPI.Controllers
 
             return new { };
         }
+
+        [HttpPost("accounts/change_language")]
+        [R5SigAuthRequired]
+        public async Task<IActionResult> ChangeLanguage([FromBody] ChangeLanguageRequest request)
+        {
+            if (string.IsNullOrEmpty(request.language) || request.language.Length != 2)
+            {
+                return BadRequest("Invalid language code. It should be a 2-character string.");
+            }
+
+            long accountID = 1; // Replace this with logic to fetch the actual account ID dynamically.
+            bool success = await Db.UpdateLanguage(accountID, request.language);
+
+            if (success)
+            {
+                return Ok(new { message = "Language updated successfully." });
+            }
+            else
+            {
+                return StatusCode(500, "An error occurred while updating the language.");
+            }
+
+        }
+
 
         // Lists out each locked slot along with purchase cost that the account can unlock
         // TODO: Store these in the account database to pull from

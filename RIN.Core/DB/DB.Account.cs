@@ -81,6 +81,16 @@ namespace RIN.Core.DB
             return result > 0;
         }
 
+        public async Task<bool> UpdateLanguage(long accountId, String language)
+        {
+
+            const string UPDATE_SQL = @"update webapi.""Accounts"" set language = @language where account_id = @accountId;";
+
+            var result = await DBCall(conn => conn.ExecuteAsync(UPDATE_SQL, new { language, accountId }));
+
+            return result > 0;
+        } 
+
         public async Task<AccountMTX> GetAccountMTXData(long accountId)
         {
             const string SELECT_SQL = @"SELECT
