@@ -19,6 +19,15 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- TOC entry 5187 (class 0 OID 0)
+-- Dependencies: 812
+-- Name: ZoneSettings_id_seq; Type: SEQUENCE SET; Schema: webapi; Owner: tmwadmin
+--
+
+SELECT pg_catalog.setval('webapi."ZoneSettings_id_seq"', 1, false);
+
+
+--
 -- TOC entry 5181 (class 0 OID 19539)
 -- Dependencies: 813
 -- Data for Name: ZoneSettings; Type: TABLE DATA; Schema: webapi; Owner: tmwadmin
@@ -40,15 +49,6 @@ INSERT INTO webapi."ZoneSettings" (id, zone_id,mission_id,gametype,instance_type
 	 (11,1007,502,'campaign','pve',false,'MATCH_MAP_POWER_GRAB','MATCH_MAP_POWER_GRAB_DESC','Chapter 1: Power Grab','MATCH_MAP_POWER_GRAB',false,0,4,1,false,true,1,1,5,0,false,1,5,true,'{"thumbnail":"/assets/zones/power_grab/tbn.png","screenshot":["/assets/zones/power_grab/01.png","/assets/zones/power_grab/02.png","/assets/zones/power_grab/03.png"],"lfg":"/assets/zones/placeholder-ss.png"}'),
 	 (12,1008,506,'campaign','pve',false,'MATCH_MAP_RISKY_BUSINESS','MATCH_MAP_RISKY_BUSINESS_DESC','Chapter 1: Risky Business','MATCH_MAP_RISKY_BUSINESS',false,0,5,1,false,true,1,1,5,0,false,0,0,true,'{"thumbnail":"/assets/zones/risky_business/tbn.png","screenshot":["/assets/zones/risky_business/01.png","/assets/zones/risky_business/02.png","/assets/zones/risky_business/03.png"],"lfg":"/assets/zones/placeholder-ss.png"}'),
 	 (13,833,507,'campaign','pve',false,'MATCH_MAP_BLACKWATER_ANOMALY','MATCH_MAP_BLACKWATER_ANOMALY_DESC','Chapter 1: Blackwater Anomaly','MATCH_MAP_BLACKWATER_ANOMALY',false,0,6,1,false,true,1,1,5,0,false,0,0,true,'{"thumbnail":"/assets/zones/blackwater_anomaly/tbn.png","screenshot":["/assets/zones/blackwater_anomaly/01.png","/assets/zones/blackwater_anomaly/02.png","/assets/zones/blackwater_anomaly/03.png"],"lfg":"/assets/zones/placeholder-ss.png"}');
-
-
---
--- TOC entry 5187 (class 0 OID 0)
--- Dependencies: 812
--- Name: ZoneSettings_id_seq; Type: SEQUENCE SET; Schema: webapi; Owner: tmwadmin
---
-
-SELECT pg_catalog.setval('webapi."ZoneSettings_id_seq"', 1, true);
 
 
 -- Completed on 2023-12-30 20:33:24 UTC
