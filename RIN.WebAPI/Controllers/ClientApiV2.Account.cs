@@ -109,8 +109,10 @@ namespace RIN.WebAPI.Controllers
             {
                 return BadRequest("Invalid language code. It should be a 2-character string.");
             }
+            var uid = HttpUtility.UrlDecode(GetRed5Sig().UID.ToString());
+            var loginResult = await Db.GetLoginData(uid);
 
-            long accountID = 1; // Replace this with logic to fetch the actual account ID dynamically.
+            long accountID = loginResult.account_id;
             bool success = await Db.UpdateLanguage(accountID, request.language);
 
             if (success)
