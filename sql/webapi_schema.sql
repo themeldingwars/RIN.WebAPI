@@ -735,7 +735,8 @@ CREATE TABLE webapi."Accounts" (
     secret text NOT NULL,
     email_optin boolean DEFAULT false NOT NULL,
     email_verified boolean DEFAULT false NOT NULL,
-    rb_balance bigint NOT NULL
+    rb_balance bigint NOT NULL,
+    language text
 );
 
 
