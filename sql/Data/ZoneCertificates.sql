@@ -19,6 +19,15 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- TOC entry 5187 (class 0 OID 0)
+-- Dependencies: 816
+-- Name: ZoneCertificates_id_seq; Type: SEQUENCE SET; Schema: webapi; Owner: tmwadmin
+--
+
+SELECT pg_catalog.setval('webapi."ZoneCertificates_id_seq"', 1, false);
+
+
+--
 -- TOC entry 5181 (class 0 OID 19573)
 -- Dependencies: 817
 -- Data for Name: ZoneCertificates; Type: TABLE DATA; Schema: webapi; Owner: tmwadmin
@@ -34,15 +43,6 @@ INSERT INTO webapi."ZoneCertificates" (cert_id,zone_setting_id,authorize_positio
 	 (3590,11,'all',NULL,'present'),
 	 (3591,12,'all',NULL,'present'),
      (3592,13,'all',NULL,'present');
-
-
---
--- TOC entry 5187 (class 0 OID 0)
--- Dependencies: 816
--- Name: ZoneCertificates_id_seq; Type: SEQUENCE SET; Schema: webapi; Owner: tmwadmin
---
-
-SELECT pg_catalog.setval('webapi."ZoneCertificates_id_seq"', 1, true);
 
 
 -- Completed on 2023-12-30 20:34:24 UTC

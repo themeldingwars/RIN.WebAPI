@@ -43,14 +43,7 @@ namespace RIN.InternalAPI.Services
             return resp;
         }
 
-        public async ValueTask<Empty> SaveCharacterGameSessionData(GameSessionData req)
-        {
-            await DB.UpdateCharacterAfterGameSession((long)req.CharacterId, (int)req.ZoneId, (int)req.OutpostId, (int)req.TimePlayed);
-
-            return new Empty();
-        }
-
-        public async Task Listen(Empty req, IServerStreamWriter<Event> responseStream, ServerCallContext context)
+        public async Task Stream(IAsyncStreamReader<Command> commands, IServerStreamWriter<Event> events, ServerCallContext context)
         {
             await using var connection = new NpgsqlConnection(DB.ConnStr);
             await connection.OpenAsync();
@@ -87,18 +80,38 @@ namespace RIN.InternalAPI.Services
 
                     cvu.CharacterAndBattleframeVisuals = updatedVisuals;
 
-                    await responseStream.WriteAsync(cvu);
+                    await events.WriteAsync(cvu);
                 }
                 else
                 {
-                    await responseStream.WriteAsync(evt);
+                    await events.WriteAsync(evt);
                 }
             };
+
+            var commandsTask = Task.Run(async () =>
+            {
+                await foreach (var command in commands.ReadAllAsync())
+                {
+                    Logger.LogInformation("Received command: {command}", command);
+
+                    switch (command)
+                    {
+                        case SaveGameSessionData data:
+                            await DB.UpdateCharacterAfterGameSession((long)data.CharacterId, (int)data.ZoneId, (int)data.OutpostId, (int)data.TimePlayed);
+                            break;
+                        case SaveLgvRaceFinish race:
+                            await DB.SaveLgvRaceFinish((long)race.CharacterGuid, (int)race.LeaderboardId, (long)race.TimeMs);
+                            break;
+                    }
+                }
+            });
 
             while (!context.CancellationToken.IsCancellationRequested)
             {
                 await connection.WaitAsync(context.CancellationToken);
             }
+
+            await commandsTask;
         }
     }
 }

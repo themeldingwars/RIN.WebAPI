@@ -41,5 +41,19 @@ namespace RIN.WebAPI.Controllers
 
             return await Db.GetPersonalArmyInvites(characterGuid);
         }
+
+        [HttpGet("characters/{characterGuid}/leaderboards/{leaderboardId}")]
+        [R5SigAuthRequired]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<object> GetLeaderboardResult(
+            long characterGuid,
+            int leaderboardId,
+            [FromQuery] bool army_list = false,
+            [FromQuery] bool friends_list = false
+        )
+        {
+            return await Db.GetLeaderboardResult(leaderboardId, GetCid());
+        }
     }
 }

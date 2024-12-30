@@ -4,6 +4,7 @@ using RIN.Core;
 using RIN.Core.Common;
 using RIN.Core.DB;
 using RIN.Core.DB.SDB;
+using RIN.Core.Models.ClientApi;
 using RIN.WebAPI.Models.Config;
 using RIN.WebAPI.Utils;
 
@@ -98,6 +99,13 @@ namespace RIN.WebAPI.Controllers
             var data = "";
 
             return Content(data, "application/json");
+        }
+
+        [HttpGet("leaderboards/{leaderboardId}")]
+        [R5SigAuthRequired]
+        public async Task<Leaderboard?> GetLeaderboard(int leaderboardId, [FromQuery] int page = 1)
+        {
+                return await Db.GetLeaderboard(leaderboardId, page);
         }
     }
 }
