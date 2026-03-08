@@ -1,6 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Threading.Channels;
 using Grpc.Core;
-using Npgsql;
 using RIN.Core.DB;
 using RIN.InternalAPI.Models;
 
@@ -8,13 +7,17 @@ namespace RIN.InternalAPI.Services
 {
     public class GameServerAPI : IGameServerAPI
     {
-        private readonly DB DB;
+        private readonly DB Db;
         private readonly ILogger<GameServerAPI> Logger;
+        private readonly DbEventBus EventBus;
+        private readonly IHostApplicationLifetime Lifetime;
 
-        public GameServerAPI(DB db, ILogger<GameServerAPI> logger)
+        public GameServerAPI(DB db, ILogger<GameServerAPI> logger, DbEventBus eventBus, IHostApplicationLifetime lifetime)
         {
-            DB     = db;
+            Db     = db;
             Logger = logger;
+            EventBus = eventBus;
+            Lifetime = lifetime;
         }
 
         public async ValueTask<PingResp> Ping(PingReq req)
@@ -30,13 +33,13 @@ namespace RIN.InternalAPI.Services
 
         public async ValueTask<CharacterAndBattleframeVisuals> GetCharacterAndBattleframeVisuals(CharacterID req)
         {
-            var result    = await DB.GetBasicCharacterAndVisualData(req.ID);
+            var result    = await Db.GetBasicCharacterAndVisualData(req.ID);
             var bfVisuals = PlayerBattleframeVisuals.CreateDefault();
 
             var resp = new CharacterAndBattleframeVisuals
             {
-                CharacterInfo      = result.Item1,
-                CharacterVisuals   = result.Item2,
+                CharacterInfo      = result.info,
+                CharacterVisuals   = result.visuals,
                 BattleframeVisuals = bfVisuals
             };
 
@@ -45,73 +48,52 @@ namespace RIN.InternalAPI.Services
 
         public async Task Stream(IAsyncStreamReader<Command> commands, IServerStreamWriter<Event> events, ServerCallContext context)
         {
-            await using var connection = new NpgsqlConnection(DB.ConnStr);
-            await connection.OpenAsync();
+            var channel = Channel.CreateUnbounded<Event>();
+            var subscriptionId = EventBus.Subscribe(channel);
 
-            await using var cmd = new NpgsqlCommand("LISTEN events", connection);
-            await cmd.ExecuteNonQueryAsync();
-
-            connection.Notification += async (_, e) =>
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken, Lifetime.ApplicationStopping);
+            var token = cts.Token;
+            try
             {
-                var dbEvent = e.Payload.Split(["->"], StringSplitOptions.None);
-                var eventType = dbEvent[0];
-                var payloadJson = dbEvent[1];
-
-                var type = Type.GetType($"RIN.InternalAPI.Models.{eventType}");
-
-                if (type == null)
+                var sendEventsTask = Task.Run(async () =>
                 {
-                    Logger.LogError("Unknown event type: {eventType}", eventType);
-                    return;
-                }
-
-                var payload = JsonSerializer.Deserialize(payloadJson, type);
-
-                if (payload is not Event evt)
-                {
-                    Logger.LogError("Failed to deserialize payload for event type: {eventType}", eventType);
-                    return;
-                }
-
-                if (evt is CharacterVisualsUpdated cvu)
-                {
-                    var updatedVisuals = await GetCharacterAndBattleframeVisuals(
-                        new CharacterID { ID = (long)cvu.CharacterGuid });
-
-                    cvu.CharacterAndBattleframeVisuals = updatedVisuals;
-
-                    await events.WriteAsync(cvu);
-                }
-                else
-                {
-                    await events.WriteAsync(evt);
-                }
-            };
-
-            var commandsTask = Task.Run(async () =>
-            {
-                await foreach (var command in commands.ReadAllAsync())
-                {
-                    Logger.LogInformation("Received command: {command}", command);
-
-                    switch (command)
+                    await foreach (var evt in channel.Reader.ReadAllAsync(token))
                     {
-                        case SaveGameSessionData data:
-                            await DB.UpdateCharacterAfterGameSession((long)data.CharacterId, (int)data.ZoneId, (int)data.OutpostId, (int)data.TimePlayed);
-                            break;
-                        case SaveLgvRaceFinish race:
-                            await DB.SaveLgvRaceFinish((long)race.CharacterGuid, (int)race.LeaderboardId, (long)race.TimeMs);
-                            break;
+                        await events.WriteAsync(evt);
                     }
-                }
-            });
+                });
 
-            while (!context.CancellationToken.IsCancellationRequested)
-            {
-                await connection.WaitAsync(context.CancellationToken);
+                var commandsTask = Task.Run(async () =>
+                {
+                    await foreach (var command in commands.ReadAllAsync(token))
+                    {
+                        Logger.LogInformation("Received command: {command}", command);
+
+                        switch (command)
+                        {
+                            case SaveGameSessionData data:
+                                await Db.UpdateCharacterAfterGameSession((long)data.CharacterId, (int)data.ZoneId, (int)data.OutpostId, (int)data.TimePlayed);
+                                break;
+                            case SaveLgvRaceFinish race:
+                                await Db.SaveLgvRaceFinish((long)race.CharacterGuid, (int)race.LeaderboardId, (long)race.TimeMs);
+                                break;
+                        }
+                    }
+                });
+
+                await Task.WhenAny(sendEventsTask, commandsTask);
+                await cts.CancelAsync();
+                await Task.WhenAll(sendEventsTask, commandsTask);
             }
-
-            await commandsTask;
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Logger.LogError(ex, "GRPC Stream crashed");
+            }
+            finally
+            {
+                channel.Writer.TryComplete();
+                EventBus.Unsubscribe(subscriptionId);
+            }
         }
     }
 }
