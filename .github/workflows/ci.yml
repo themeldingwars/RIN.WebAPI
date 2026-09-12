@@ -1,0 +1,63 @@
+name: CI
+
+on: [push, pull_request, workflow_dispatch]
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: ${{ matrix.platform.name }} ${{ matrix.dotnet.name }}
+    runs-on: ${{ matrix.platform.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { name: Linux, os: ubuntu-24.04 }
+          - { name: Windows, os: windows-2025-vs2026 }
+        dotnet:
+          - { name: .NET 8, version: '8.0.x' }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Setup .NET SDK
+        id: setup-dotnet
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ matrix.dotnet.version }}
+      - name: Enforce SDK Version
+        env:
+          DOTNET_VERSION: ${{ steps.setup-dotnet.outputs.dotnet-version }}
+        run: dotnet new globaljson --sdk-version "$DOTNET_VERSION" --force
+      - name: Verify SDK Installation
+        run: dotnet --info
+
+      - name: Restore
+        run: dotnet restore RIN.WebAPI/RIN.WebAPI.sln
+      - name: Build
+        run: dotnet build RIN.WebAPI/RIN.WebAPI.sln --configuration Release --no-restore
+
+      - name: Publish RIN.WebAPI
+        if: matrix.platform.name == 'Linux'
+        run: dotnet publish RIN.WebAPI/RIN.WebAPI.csproj --configuration Release --no-build --output Publish/RIN.WebAPI
+      - name: Publish RIN.InternalAPI
+        if: matrix.platform.name == 'Linux'
+        run: dotnet publish RIN.InternalAPI/RIN.InternalAPI.csproj --configuration Release --no-build --output Publish/RIN.InternalAPI
+      - name: Upload Artifact
+        if: matrix.platform.name == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: RIN.WebAPI-${{ github.sha }}
+          path: Publish
+          include-hidden-files: true
