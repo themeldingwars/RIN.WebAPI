@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.66.0" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.83.0" />
     <PackageReference Include="protobuf-net.Grpc" Version="1.2.2" />
     <PackageReference Include="protobuf-net.Grpc.AspNetCore" Version="1.2.2" />
     <PackageReference Include="protobuf-net.Grpc.Reflection" Version="1.2.2" />
