@@ -1,8 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.AspNetCore.Mvc;
 using RIN.Core.DB.SDB;
 using RIN.Core;
 using RIN.Core.SDB;
@@ -37,10 +33,10 @@ namespace RIN.WebAPI.Controllers
         }
         
         [HttpGet("RegisterAccount")]
-        public async Task<(long, string)> RegisterAccount(string email, string password, string country, DateTime? birthday, string referralKey, bool emailOpin = false)
+        public async Task<object> RegisterAccount(string email, string password, string country, DateTime? birthday, string? referralKey = null, bool emailOpin = false)
         {
-            var result = await Db.RegisterNewAccount(email, password, country, birthday ?? DateTime.Now, referralKey, emailOpin);
-            return result;
+            var (accountId, error) = await Db.RegisterNewAccount(email, password, country, birthday ?? DateTime.Now, referralKey!, emailOpin);
+            return new { account_id = accountId, error };
         }
         
         [HttpGet("TestException")]
