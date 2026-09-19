@@ -24,4 +24,8 @@
     <ProjectReference Include="..\RIN.Core\RIN.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="Npgsql.EnableStoredProcedureCompatMode" Value="true" />
+  </ItemGroup>
+
 </Project>
