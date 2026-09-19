@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using RIN.Core.Config;
 using RIN.Core.DB;
 using RIN.Core.DB.SDB;
+using RIN.Core.Hosting;
 using RIN.WebAPI.Models;
 using RIN.WebAPI.Models.Config;
 using RIN.WebAPI.Utils;
@@ -21,6 +22,7 @@ Log.Logger = new LoggerConfiguration()
             .CreateBootstrapLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddRinObservability();
 
 builder.Host.UseSerilog((ctx, services, cfg) =>
 {
@@ -32,6 +34,7 @@ builder.Host.UseSerilog((ctx, services, cfg) =>
             rollingInterval: RollingInterval.Day,
             retainedFileCountLimit: 5)
        .WriteTo.File(new CompactJsonFormatter(), "./logs/log-.json", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 5)
+       .WriteToOpenTelemetryIfEnabled(ctx.Configuration)
        .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning);
 });
 
@@ -78,6 +81,7 @@ app.UseAuthorization();
 
 app.UseSerilogRequestLogging();
 
+app.MapRinHealthChecks();
 app.MapControllers();
 
 app.Run();

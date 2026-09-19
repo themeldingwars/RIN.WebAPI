@@ -2,6 +2,7 @@ using ProtoBuf.Grpc.Server;
 using RIN.Core.Config;
 using RIN.Core.DB.SDB;
 using RIN.Core.DB;
+using RIN.Core.Hosting;
 using RIN.InternalAPI.Services;
 using Serilog;
 
@@ -16,8 +17,10 @@ namespace RIN.InternalAPI
 #endif
 
             var builder = WebApplication.CreateBuilder(args);
+            builder.AddRinObservability();
 
-            builder.Host.UseSerilog((context, configuration) => configuration.ReadFrom.Configuration(context.Configuration));
+            builder.Host.UseSerilog((context, configuration) => configuration.ReadFrom.Configuration(context.Configuration)
+                                                                             .WriteToOpenTelemetryIfEnabled(context.Configuration));
 
             // Add services to the container.
             builder.Services.AddGrpc();
@@ -35,6 +38,7 @@ namespace RIN.InternalAPI
 
             // Configure the HTTP request pipeline.
             app.MapGrpcService<GameServerAPI>();
+            app.MapRinHealthChecks();
             app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
 
             app.Run();
