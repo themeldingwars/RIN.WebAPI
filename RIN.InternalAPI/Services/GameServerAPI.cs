@@ -1,5 +1,5 @@
 ﻿using System.Threading.Channels;
-using Grpc.Core;
+using ProtoBuf.Grpc;
 using RIN.Core.DB;
 using RIN.InternalAPI.Models;
 
@@ -46,53 +46,73 @@ namespace RIN.InternalAPI.Services
             return resp;
         }
 
-        public async Task Stream(IAsyncStreamReader<Command> commands, IServerStreamWriter<Event> events, ServerCallContext context)
+        public async IAsyncEnumerable<Event> Stream(IAsyncEnumerable<Command> commands, CallContext context = default)
         {
             var channel = Channel.CreateUnbounded<Event>();
             var subscriptionId = EventBus.Subscribe(channel);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken, Lifetime.ApplicationStopping);
             var token = cts.Token;
+            var commandsTask = ReadCommands(commands, channel, token);
+
             try
             {
-                var sendEventsTask = Task.Run(async () =>
+                while (true)
                 {
-                    await foreach (var evt in channel.Reader.ReadAllAsync(token))
+                    Event evt;
+                    try
                     {
-                        await events.WriteAsync(evt);
+                        evt = await channel.Reader.ReadAsync(token);
                     }
-                });
-
-                var commandsTask = Task.Run(async () =>
-                {
-                    await foreach (var command in commands.ReadAllAsync(token))
+                    catch (Exception ex)
                     {
-                        Logger.LogInformation("Received command: {command}", command);
-
-                        switch (command)
+                        if (ex is not OperationCanceledException and not ChannelClosedException)
                         {
-                            case SaveGameSessionData data:
-                                await Db.UpdateCharacterAfterGameSession((long)data.CharacterId, (int)data.ZoneId, (int)data.OutpostId, (int)data.TimePlayed);
-                                break;
-                            case SaveLgvRaceFinish race:
-                                await Db.SaveLgvRaceFinish((long)race.CharacterGuid, (int)race.LeaderboardId, (long)race.TimeMs);
-                                break;
+                            Logger.LogError(ex, "GRPC Stream crashed");
                         }
-                    }
-                });
 
-                await Task.WhenAny(sendEventsTask, commandsTask);
+                        break;
+                    }
+
+                    yield return evt;
+                }
+            }
+            finally
+            {
                 await cts.CancelAsync();
-                await Task.WhenAll(sendEventsTask, commandsTask);
+                channel.Writer.TryComplete();
+                EventBus.Unsubscribe(subscriptionId);
+                await commandsTask;
+            }
+        }
+
+        private async Task ReadCommands(IAsyncEnumerable<Command> commands, Channel<Event> channel, CancellationToken token)
+        {
+            try
+            {
+                await foreach (var command in commands.WithCancellation(token))
+                {
+                    Logger.LogInformation("Received command: {command}", command);
+
+                    switch (command)
+                    {
+                        case SaveGameSessionData data:
+                            await Db.UpdateCharacterAfterGameSession((long)data.CharacterId, (int)data.ZoneId, (int)data.OutpostId, (int)data.TimePlayed);
+                            break;
+                        case SaveLgvRaceFinish race:
+                            await Db.SaveLgvRaceFinish((long)race.CharacterGuid, (int)race.LeaderboardId, (long)race.TimeMs);
+                            break;
+                    }
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // Log here as well, as it runs in a separate task and won't be caught by the main loop
                 Logger.LogError(ex, "GRPC Stream crashed");
             }
             finally
             {
                 channel.Writer.TryComplete();
-                EventBus.Unsubscribe(subscriptionId);
             }
         }
     }
