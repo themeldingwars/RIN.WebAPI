@@ -53,6 +53,25 @@ namespace RIN.WebAPI.Controllers
             ]
         };
 
+        // TODO: Implement panels (dashboard, abuse report, ...)
+        [HttpGet("panelmanager")]
+        public IActionResult PanelManager()
+        {
+            const string html = """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                <meta charset="UTF-8" />
+                <title>InGame</title>
+                </head>
+                <body>
+                </body>
+                </html>
+                """;
+
+            return Content(html, "text/html");
+        }
+
         [HttpGet("api/v1/social/static_data.json")]
         [R5SigAuthRequired]
         public SocialStaticData SocialStaticData()
