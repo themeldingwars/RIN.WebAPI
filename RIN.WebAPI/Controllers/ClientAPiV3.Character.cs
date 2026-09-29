@@ -62,7 +62,7 @@ namespace RIN.WebAPI.Controllers
         [R5SigAuthRequired]
         public async Task<object> GetPerkRespecs(long characterGuid, int loadoutId)
         {
-            var data = "{ respecs: 0 }";
+            var data = """{ "perks": [], "respecs": 0, "max_points": 0 }""";
 
             return Content(data, "application/json");
         }
