@@ -5,6 +5,7 @@ using RIN.Core.Common;
 using RIN.Core.DB;
 using RIN.Core.DB.SDB;
 using RIN.Core.Models.ClientApi;
+using RIN.WebAPI.Models.ClientApi;
 using RIN.WebAPI.Models.Config;
 using RIN.WebAPI.Utils;
 
@@ -126,6 +127,23 @@ namespace RIN.WebAPI.Controllers
             var data = "{ total_count: 0, results: [] }";
 
             return Content(data, "application/json");
+        }
+
+        // The rewards of the 1869 captures, keyed by streak day
+        [HttpGet("daily_rewards")]
+        [R5SigAuthRequired]
+        public async Task<Dictionary<string, List<DailyReward>>> DailyRewards()
+        {
+            var rewards = new Dictionary<string, List<DailyReward>>
+            {
+                ["1"] = [new DailyReward { item_type = 93675, quantity = 1 }],
+                ["2"] = [new DailyReward { item_type = 96772, quantity = 1 }],
+                ["3"] = [new DailyReward { item_type = 96771, quantity = 1 }],
+                ["4"] = [new DailyReward { item_type = 96770, quantity = 1 }],
+                ["5"] = [new DailyReward { item_type = 96769, quantity = 1 }]
+            };
+
+            return rewards;
         }
 
         [HttpPost("ui_actions")]

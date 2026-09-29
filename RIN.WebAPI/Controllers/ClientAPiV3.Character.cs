@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using RIN.Core;
+using RIN.WebAPI.Models.ClientApi;
 using RIN.WebAPI.Utils;
 
 namespace RIN.WebAPI.Controllers
@@ -64,6 +65,22 @@ namespace RIN.WebAPI.Controllers
             var data = "{ respecs: 0 }";
 
             return Content(data, "application/json");
+        }
+
+        // TODO: Implement, the streak should come from the character's logins
+        [HttpGet("characters/{characterGuid}/login_streak")]
+        [R5SigAuthRequired]
+        public async Task<LoginStreak> GetLoginStreak(long characterGuid)
+        {
+            var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+
+            return new LoginStreak
+            {
+                character_guid = characterGuid,
+                streak         = 1,
+                first_login    = today,
+                last_updated   = today
+            };
         }
     }
 }
