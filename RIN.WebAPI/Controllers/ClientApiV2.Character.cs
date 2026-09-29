@@ -92,7 +92,7 @@ namespace RIN.WebAPI.Controllers
         [R5SigAuthRequired]
         public async Task<object> ListMailbox(long characterGuid, [FromQuery(Name = "page")] int page)
         {
-            var data = "{ count: 0, results: [] }";
+            var data = """{ "count": 0, "results": [] }""";
 
             return Content(data, "application/json");
         }
