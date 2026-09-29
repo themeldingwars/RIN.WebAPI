@@ -68,6 +68,12 @@ namespace RIN.WebAPI.Controllers
             return hosts;
         }
 
+        [HttpGet("/{host:regex(^(frontend|store|chatserver|replay|web|market|ingame|clientapi|webasset|rhsigscan|webaccounts)$)}")]
+        public IActionResult HostProbe()
+        {
+            return Content("{}", "application/json");
+        }
+
         [HttpGet("/clientapi/motd")]
         public async Task<MessageOfTheDay> MOTD()
         {
