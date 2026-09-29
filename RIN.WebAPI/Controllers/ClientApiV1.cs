@@ -241,5 +241,13 @@ namespace RIN.WebAPI.Controllers
 
             return zone_list;
         }
+
+        // TODO: Implement, maps zone ids (as string) to matchmaking queue ids once there is matchmaking
+        [HttpGet("zones/queue_ids")]
+        [R5SigAuthRequired]
+        public async Task<object> ZoneQueueIds()
+        {
+            return Content("{}", "application/json");
+        }
     }
 }

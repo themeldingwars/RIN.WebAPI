@@ -129,7 +129,6 @@ namespace RIN.WebAPI.Controllers
             return Content(data, "application/json");
         }
 
-        // The rewards of the 1869 captures, keyed by streak day
         [HttpGet("daily_rewards")]
         [R5SigAuthRequired]
         public async Task<Dictionary<string, List<DailyReward>>> DailyRewards()
