@@ -124,7 +124,7 @@ namespace RIN.WebAPI.Controllers
         [R5SigAuthRequired]
         public async Task<object> LookingForPeople()
         {
-            var data = "{ total_count: 0, results: [] }";
+            var data = """{ "page": 1, "total_count": 0, "results": [] }""";
 
             return Content(data, "application/json");
         }
