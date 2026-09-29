@@ -1,13 +1,7 @@
-﻿using System;
-using System.Net;
-using System.Runtime.InteropServices;
-using System.Threading.Tasks;
-using System.Web;
+﻿using System.Web;
 using FauFau.Net.Web;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Razor;
 using RIN.Core;
-using RIN.Core.DB;
 using RIN.WebAPI.Models.ClientApi;
 using RIN.WebAPI.Utils;
 
@@ -95,8 +89,18 @@ namespace RIN.WebAPI.Controllers
         {
             //Logger.LogInformation("CreateAccount {@req}", req);
 
-            var birthday  = DateTime.Parse(req.birthday);
-            var accountId = Db.RegisterNewAccount(req.email, req.password, req.country, birthday, req.referral_key, req.email_optin);
+            if (!DateTime.TryParse(req.birthday, out var birthday))
+                return ReturnError(Error.Codes.ERR_UNKNOWN, $"Couldn't read the birthday '{req.birthday}'");
+
+            var (accountId, error) = await Db.RegisterNewAccount(req.email, req.password, req.country, birthday, req.referral_key, req.email_optin);
+
+            if (!string.IsNullOrEmpty(error))
+                return ReturnError(error, error == Error.Codes.ERR_ACCOUNT_EXISTS
+                    ? "An account with that email already exists"
+                    : "Couldn't create the account");
+
+            if (accountId <= 0)
+                return ReturnError(Error.Codes.ERR_UNKNOWN, "Couldn't create the account, check the server log");
 
             return new { };
         }
