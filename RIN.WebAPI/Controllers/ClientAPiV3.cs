@@ -93,11 +93,16 @@ namespace RIN.WebAPI.Controllers
             return items;
         }
 
+        // TODO: Return the proper perk data
         [HttpGet("trade/products/garage_slot_perk_respec")]
         [R5SigAuthRequired]
         public async Task<object> GarageSlotPerkRespec()
         {
-            var data = "";
+            var data = """
+                [{ "id": 577621, "name": "Perk Respec Points: 1", "remote_type": "garage_slot_perk_respec", "remote_id": 1, "quantity": 1,
+                   "unlock_context": null, "duration": 0,
+                   "prices": [{ "id": 1401522, "currency_type": "redbean", "currency_remote_id": 0, "amount": 2 }] }]
+                """;
 
             return Content(data, "application/json");
         }
