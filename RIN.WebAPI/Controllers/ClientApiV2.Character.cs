@@ -97,6 +97,14 @@ namespace RIN.WebAPI.Controllers
             return Content(data, "application/json");
         }
 
+        // TODO: Implement, an attachment_count of 0 makes the client mark all attachments as claimed
+        [HttpPost("characters/{characterGuid}/mail/{messageId}/claim_attachments")]
+        [R5SigAuthRequired]
+        public async Task<object> ClaimMailAttachments(long characterGuid, long messageId)
+        {
+            return new { id = messageId, attachment_count = 0 };
+        }
+
         // TOOD: Implement
         [HttpGet("characters/{characterGuid}/market/listings")]
         [R5SigAuthRequired]
