@@ -20,5 +20,12 @@ namespace RIN.WebAPI.Controllers
 
             return new JsonResult(response, options);
         }
+
+        [HttpGet("zone_settings/context/{context}")]
+        [R5SigAuthRequired]
+        public Task<IActionResult> ZoneSettingsContext(uint context)
+        {
+            return ZoneSettings(); // Always return the full list for now
+        }
     }
 }
