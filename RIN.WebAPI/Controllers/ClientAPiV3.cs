@@ -127,5 +127,12 @@ namespace RIN.WebAPI.Controllers
 
             return Content(data, "application/json");
         }
+
+        [HttpPost("ui_actions")]
+        [R5SigAuthRequired]
+        public async Task<object> UiActions()
+        {
+            return Content("{}", "application/json");
+        }
     }
 }
