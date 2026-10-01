@@ -9,6 +9,7 @@ namespace RIN.InternalAPI
     {
         public ValueTask<PingResp> Ping(PingReq req);
         public ValueTask<CharacterAndBattleframeVisuals> GetCharacterAndBattleframeVisuals(CharacterID req);
+        public ValueTask<TransferCharacterResp> TransferCharacter(TransferCharacterReq req);
         public IAsyncEnumerable<Event> Stream(IAsyncEnumerable<Command> commands, CallContext context = default);
     }
 }

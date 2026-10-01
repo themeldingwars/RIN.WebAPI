@@ -46,6 +46,13 @@ namespace RIN.InternalAPI.Services
             return resp;
         }
 
+        public async ValueTask<TransferCharacterResp> TransferCharacter(TransferCharacterReq req)
+        {
+            var saved = await Db.UpdateCharacterAfterGameSession((long)req.CharacterId, (int)req.ZoneId, (int)req.OutpostId, (int)req.TimePlayed);
+
+            return new TransferCharacterResp { Success = saved };
+        }
+
         public async IAsyncEnumerable<Event> Stream(IAsyncEnumerable<Command> commands, CallContext context = default)
         {
             var channel = Channel.CreateUnbounded<Event>();
