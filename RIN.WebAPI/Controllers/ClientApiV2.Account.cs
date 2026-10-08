@@ -24,10 +24,10 @@ namespace RIN.WebAPI.Controllers
             if (loginResult == null) 
                 return invalidLoginError;
 
-            var authed = Auth.Verify(loginResult.secret, GetRed5Sig1Str().AsSpan());
+            var result = await R5SigAuth.VerifyRequest(Request, loginResult.secret, Config.Red5SigMaxClockSkew);
 
             // Auth failed, password mismatch prob
-            if (!authed)
+            if (result != Red5Sig.VerifyResult.Valid)
                 return invalidLoginError;
 
             LoginEvents loginEvents = GetLoginEvents();

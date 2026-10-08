@@ -1,4 +1,5 @@
 ﻿using FauFau.Net.Web;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Options;
@@ -34,22 +35,45 @@ namespace RIN.WebAPI.Utils
             if (!Config.VerifyRed5Sig)
                 return;
 
-            var str = context.HttpContext.Request.Headers.TryGetValue("X-Red5-Signature", out StringValues header) ? header.FirstOrDefault() : null;
-            if (str == null)
+            var header = GetHeader(context.HttpContext.Request);
+            if (header == null)
+            {
                 context.Result = CreateError(Error.Codes.ERR_INCORRECT_USERPASS, "No Signature");
-
-            // TODO: Verify request body with sig
-
-            var uid = HttpUtility.UrlDecode(Red5Sig.ParseString(str).UID.ToString());
+                return;
+            }
 
             // TODO: Cache the users uuid to account id to skip a db call
+            var uid         = HttpUtility.UrlDecode(Red5Sig.ParseString(header).UID.ToString());
             var loginResult = await Db.GetLoginData(uid);
             if (loginResult == null)
+            {
                 context.Result = CreateError(Error.Codes.ERR_INCORRECT_USERPASS);
+                return;
+            }
 
-            var authed = Auth.Verify(loginResult.secret, str.AsSpan());
-            if (!authed)
+            var result = await VerifyRequest(context.HttpContext.Request, loginResult.secret, Config.Red5SigMaxClockSkew);
+            if (result != Red5Sig.VerifyResult.Valid)
                 context.Result = CreateError(Error.Codes.ERR_INCORRECT_USERPASS);
+        }
+
+        // Checks the token, the body hash and the time of the signature, the body stays readable for the action
+        public static async Task<Red5Sig.VerifyResult> VerifyRequest(HttpRequest request, string secret, TimeSpan maxClockSkew)
+        {
+            var header = GetHeader(request);
+            if (header == null)
+                return Red5Sig.VerifyResult.Malformed;
+
+            request.EnableBuffering();
+            using var body = new MemoryStream();
+            await request.Body.CopyToAsync(body);
+            request.Body.Position = 0;
+
+            return Red5Sig.Verify(secret, header, body.GetBuffer().AsSpan(0, (int)body.Length), DateTimeOffset.UtcNow, maxClockSkew);
+        }
+
+        private static string GetHeader(HttpRequest request)
+        {
+            return request.Headers.TryGetValue(Auth.SIG_HEADER_NAME, out StringValues header) ? header.FirstOrDefault() : null;
         }
 
         private ObjectResult CreateError(string code, string msg = null)

@@ -6,5 +6,6 @@
 
         public string BaseURL          { get; set; } = string.Empty;
         public bool   VerifyRed5Sig    { get; set; } = true;
+        public TimeSpan Red5SigMaxClockSkew { get; set; } = TimeSpan.FromMinutes(15);
     }
 }
