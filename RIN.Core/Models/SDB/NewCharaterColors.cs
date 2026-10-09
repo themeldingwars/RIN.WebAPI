@@ -1,4 +1,4 @@
-﻿using RIN.Core.Utils;
+﻿using FauFau.Util;
 
 namespace RIN.Core.SDB
 {
@@ -13,17 +13,17 @@ namespace RIN.Core.SDB
 
         public uint EyeColor
         {
-            get => FColor.CombineLightDark((uint)EyeColorLight, (uint)EyeColorDark);
+            get => WarpaintColor.Pack((uint)EyeColorLight, (uint)EyeColorDark);
         }
 
         public uint SkinColor
         {
-            get => FColor.CombineLightDark((uint)SkinColorLight, (uint)SkinColorDark);
+            get => WarpaintColor.Pack((uint)SkinColorLight, (uint)SkinColorDark);
         }
 
         public uint HairColor
         {
-            get => FColor.CombineLightDark((uint)HairColorLight, (uint)HairColorDark);
+            get => WarpaintColor.Pack((uint)HairColorLight, (uint)HairColorDark);
         }
     }
 }
