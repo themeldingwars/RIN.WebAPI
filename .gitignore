@@ -351,3 +351,7 @@ MigrationBackup/
 
 .idea/
 UnhandledRoutes/
+
+# Streaming assets drop folder
+RIN.WebAPI/StreamingAssets/*
+!RIN.WebAPI/StreamingAssets/.gitkeep

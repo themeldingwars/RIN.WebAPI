@@ -24,6 +24,17 @@ Web API server for the client
         * It is possible you will need to restart RIN/Docker/Firefall after installing the certificate for them to properly recognize it.
 * You will most likely not need to restart `Docker` unless you make DB Schema changes.
 
+## Streaming assets
+The client streamed some assets from `dl.firefall.com` instead of installing them: the finest levels of the virtual texture and the dialogue media banks.
+RIN serves the `RIN.WebAPI/StreamingAssets` folder at `/dl`, with the range requests the client needs. Set `WebApiConfig:StreamingAssetsPath` to use another folder, or to an empty string to turn it off.
+* Put the virtual texture levels in `vtex/static.vtex<N>` and the banks in `AssetStream/<block>/<id>.bnk`, e.g. `AssetStream/00180000/00180091.bnk`.
+* Point the client at it in `Firefall.ini`:
+```ini
+[FilePaths]
+VTRemotePath = "https://localhost:5001/dl/vtex/static.vtex"
+AssetStreamPath = "https://localhost:5001/dl/AssetStream/"
+```
+
 ## Contributing / Updating
 If you have made db changes run `sql/ExportSchema.bat` and check in the `webapi_schema.sql` file to make sure the schema changes are shared.
 

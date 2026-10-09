@@ -68,6 +68,8 @@ var app = builder.Build();
 
 app.UseTmwExceptionHandler();
 
+app.MapStreamingAssets();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment()) {
     app.UseSwagger();
