@@ -29,6 +29,7 @@ The client streamed some assets from `dl.firefall.com` instead of installing the
 RIN serves the `RIN.WebAPI/StreamingAssets` folder at `/dl`, with the range requests the client needs. Set `WebApiConfig:StreamingAssetsPath` to use another folder, or to an empty string to turn it off.
 * Put the virtual texture levels in `vtex/static.vtex<N>` and the banks in `AssetStream/<block>/<id>.bnk`, e.g. `AssetStream/00180000/00180091.bnk`.
 * A partial bank, like the ones recovered from player caches, needs its `.bnk_ac` next to it. Requests outside the ranges it lists get a 404 instead of the gaps.
+* `ingame/` in the same folder stands in for the in-game web host.
 * Point the client at it in `Firefall.ini`:
 ```ini
 [FilePaths]

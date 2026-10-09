@@ -53,10 +53,16 @@ namespace RIN.WebAPI.Controllers
             ]
         };
 
-        // TODO: Implement panels (dashboard, abuse report, ...)
+        // TODO: Implement the APIs behind the panels (dashboard, abuse report, ...)
         [HttpGet("panelmanager")]
         public IActionResult PanelManager()
         {
+            var page = StreamingAssets.InGameFile(HttpContext, "panelmanager.html");
+            if (page != null)
+            {
+                return PhysicalFile(page, "text/html; charset=utf-8");
+            }
+
             const string html = """
                 <!DOCTYPE html>
                 <html>

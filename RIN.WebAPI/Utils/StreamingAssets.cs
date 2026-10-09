@@ -9,9 +9,12 @@ namespace RIN.WebAPI.Utils
     //   vtex/static.vtex<N>               the virtual texture levels, firefall.ini [FilePaths] VTRemotePath
     //   AssetStream/<block>/<id>.bnk      the dialogue media banks, firefall.ini [FilePaths] AssetStreamPath
     // The client only asks for byte ranges and rejects anything but 206 for the banks
+    // ingame/ holds the in-game web host's static files: the panel manager page and assets/, served at /ingame/assets
     public static class StreamingAssets
     {
         public const string RequestPath = "/dl";
+
+        private const string InGameFolder = "ingame";
 
         public static void MapStreamingAssets(this WebApplication app)
         {
@@ -40,18 +43,41 @@ namespace RIN.WebAPI.Utils
                     await next();
                 });
 
-                dl.UseStaticFiles(new StaticFileOptions
-                {
-                    FileProvider          = files,
-                    ServeUnknownFileTypes = true,
-                    DefaultContentType    = "application/octet-stream"
-                });
+                ServeFiles(dl, files);
+            });
 
-                dl.Run(context =>
-                {
-                    context.Response.StatusCode = StatusCodes.Status404NotFound;
-                    return Task.CompletedTask;
-                });
+            // The pages use root-relative urls, the copies in ingame/ are rewritten to /ingame
+            var inGameAssets = Path.Combine(root, InGameFolder, "assets");
+            Directory.CreateDirectory(inGameAssets);
+            app.Map("/ingame/assets", assets => ServeFiles(assets, new PhysicalFileProvider(inGameAssets)));
+        }
+
+        public static string? InGameFile(HttpContext context, string name)
+        {
+            var root = context.RequestServices.GetRequiredService<IOptions<WebApiConfigSettings>>().Value.StreamingAssetsPath;
+            if (string.IsNullOrWhiteSpace(root))
+            {
+                return null;
+            }
+
+            var contentRoot = context.RequestServices.GetRequiredService<IWebHostEnvironment>().ContentRootPath;
+            var path        = Path.GetFullPath(Path.Combine(root, InGameFolder, name), contentRoot);
+            return File.Exists(path) ? path : null;
+        }
+
+        private static void ServeFiles(IApplicationBuilder branch, IFileProvider files)
+        {
+            branch.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider          = files,
+                ServeUnknownFileTypes = true,
+                DefaultContentType    = "application/octet-stream"
+            });
+
+            branch.Run(context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                return Task.CompletedTask;
             });
         }
 
