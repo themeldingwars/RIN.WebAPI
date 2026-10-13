@@ -39,6 +39,27 @@ namespace RIN.Core.DB.SDB
             return result.FirstOrDefault();
         }
 
+        // The client omits start_class_id when the player re-enters the creator from the customize screen.
+        // Returns the requested frame when it is a starting loadout, otherwise the first starting loadout
+        // (Accord Dreadnaught), so a character never ends up with battleframe_sdb_id 0, which breaks the
+        // zone selection paperdoll ("Invalid item ID") and leaves "Enter World" dead.
+        public async Task<int> GetStartingBattleframeId(int requestedFrameId)
+        {
+            const string SELECT_SQL = @"SELECT frame_id FROM sdb.""dbcharacter::CharCreateLoadout""
+                WHERE is_starting_loadout = 1 AND is_dev = 0
+                ORDER BY CASE WHEN frame_id = @requestedFrameId THEN 0 ELSE 1 END, id
+                LIMIT 1;";
+
+            var result = await DBCall(conn => conn.QueryAsync<int>(SELECT_SQL, new { requestedFrameId }),
+                exception => Logger.LogError($"Error looking up starting battleframe for requested frame {requestedFrameId} due to: {exception}"));
+
+            var frameId = result.FirstOrDefault();
+            if (frameId != requestedFrameId)
+                Logger.LogWarning("Requested start class {Requested} is not a starting loadout, using {Fallback}", requestedFrameId, frameId);
+
+            return frameId;
+        }
+
         public async Task<IEnumerable<CosmeticInfo>> GetOrnamentsInfoList()
         {
             const string SELECT_SQL = @"SELECT ornaments.id, lang.english AS lang_name, display_flags, ""Usage"" AS ""usage""
