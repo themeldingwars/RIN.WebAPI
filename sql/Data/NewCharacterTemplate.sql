@@ -1,6 +1,10 @@
 -- New character seeding templates. Exactly one row has is_default, and that is what
 -- CreateNewCharacter and SeedCharacterFromTemplate use when template_id is 0.
 --
+-- Neither template lists chassis items. A chassis item belongs to a loadout, and the
+-- loadout_chassis_item_trigger makes one per loadout as the loadouts are seeded, so listing them
+-- here would seed every chassis twice.
+--
 -- Template 2 "basic" - is_default. Every chassis at level 1, with one item per slot of the sdb
 --                      dbcharacter::CharCreateLoadout "- Player" loadouts that is both filled
 --                      (default_pve_module) and unlocked at battleframe level 1 per
@@ -8,8 +12,8 @@
 --                      No perks and bandwidth 0: a level 1 frame has no perk points.
 --                      Regenerate with webapi.build_template_from_char_create('basic', 1, <frames>).
 -- Template 1 "test"  - Dev fixture. Every chassis at battleframe level 45 with the snapshotted
---                      endgame inventory and bandwidth 36, the perk points a level 45 frame buys.
---                      No perks slotted: which perks a frame runs is the player's choice.
+--                      endgame inventory (449 items) and bandwidth 36, the perk points a level 45
+--                      frame buys. No perks slotted: which perks a frame runs is the player's choice.
 --                      Regenerate with webapi.snapshot_inventory_as_template(<char_guid>, 1), then set
 --                      the frames' bandwidth (see sql/Migrations/2026-10-19-inventory-and-progression.sql).
 --
@@ -17,7 +21,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 2bDNFryv6lbmsNUaeAEsFCVGe9p1w7k2badFrJwftxoWraurrCzDtaECR8KxdR6
+\restrict Bl4kUtckUosOmR0UqUwZqoFzHrj1sg4or2ImlOcTIecTr5T4HOvydXf26ACIzdq
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -102,22 +106,7 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 3	56728	2	0	1000	1
 4	56811	2	0	1000	1
 5	75257	2	0	1000	1
-6	75772	4	0	1000	1
-7	75773	4	0	1000	1
-8	75774	4	0	1000	1
-9	75775	4	0	1000	1
 10	75820	1	0	1000	1
-11	76132	4	0	1000	1
-12	76133	4	0	1000	1
-13	76164	4	0	1000	1
-14	76331	4	0	1000	1
-15	76332	4	0	1000	1
-16	76333	4	0	1000	1
-17	76334	4	0	1000	1
-18	76335	4	0	1000	1
-19	76336	4	0	1000	1
-20	76337	4	0	1000	1
-21	76338	4	0	1000	1
 22	76958	2	0	1000	1
 23	76999	2	0	1000	1
 24	77018	2	0	1000	1
@@ -139,7 +128,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 40	81457	2	0	1000	1
 41	81490	2	0	1000	1
 42	82337	2	0	1000	1
-43	82360	4	0	1000	1
 44	84820	2	0	1000	1
 45	85228	2	0	1000	1
 46	85511	2	0	1000	1
@@ -335,7 +323,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 236	143380	2	0	1000	1
 237	143437	4	0	1000	1
 238	143670	4	0	1000	1
-239	75772	4	0	1000	1
 240	127568	4	0	1000	1
 241	129240	4	0	1000	1
 242	128298	4	0	1000	1
@@ -349,7 +336,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 250	90519	4	0	1000	1
 251	123315	4	0	1000	1
 252	125199	4	0	1000	1
-253	76164	4	0	1000	1
 254	127568	4	0	1000	1
 255	129240	4	0	1000	1
 256	128298	4	0	1000	1
@@ -363,7 +349,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 264	88341	4	0	1000	1
 265	88121	4	0	1000	1
 266	88491	4	0	1000	1
-267	75774	4	0	1000	1
 268	127568	4	0	1000	1
 269	129240	4	0	1000	1
 270	128298	4	0	1000	1
@@ -377,7 +362,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 278	123268	4	0	1000	1
 279	88831	4	0	1000	1
 280	89124	4	0	1000	1
-281	75775	4	0	1000	1
 282	127568	4	0	1000	1
 283	129240	4	0	1000	1
 284	128298	4	0	1000	1
@@ -391,7 +375,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 292	131228	4	0	1000	1
 293	91527	4	0	1000	1
 294	91559	4	0	1000	1
-295	75773	4	0	1000	1
 296	127568	4	0	1000	1
 297	129240	4	0	1000	1
 298	128298	4	0	1000	1
@@ -405,7 +388,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 306	90041	4	0	1000	1
 307	90308	4	0	1000	1
 308	91770	4	0	1000	1
-309	76133	4	0	1000	1
 310	127626	4	0	1000	1
 311	129250	4	0	1000	1
 312	125483	4	0	1000	1
@@ -420,7 +402,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 321	101974	4	0	1000	1
 322	88131	4	0	1000	1
 323	102035	4	0	1000	1
-324	76132	4	0	1000	1
 325	127770	4	0	1000	1
 326	129396	4	0	1000	1
 327	125435	4	0	1000	1
@@ -435,7 +416,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 336	101974	4	0	1000	1
 337	88131	4	0	1000	1
 338	102035	4	0	1000	1
-339	76337	4	0	1000	1
 340	127626	4	0	1000	1
 341	129250	4	0	1000	1
 342	125483	4	0	1000	1
@@ -450,7 +430,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 351	105676	4	0	1000	1
 352	105798	4	0	1000	1
 353	105859	4	0	1000	1
-354	76338	4	0	1000	1
 355	127770	4	0	1000	1
 356	129396	4	0	1000	1
 357	125435	4	0	1000	1
@@ -465,7 +444,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 366	105676	4	0	1000	1
 367	105798	4	0	1000	1
 368	105859	4	0	1000	1
-369	76331	4	0	1000	1
 370	127770	4	0	1000	1
 371	129396	4	0	1000	1
 372	125435	4	0	1000	1
@@ -480,7 +458,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 381	104597	4	0	1000	1
 382	105554	4	0	1000	1
 383	91036	4	0	1000	1
-384	76332	4	0	1000	1
 385	127626	4	0	1000	1
 386	129250	4	0	1000	1
 387	125483	4	0	1000	1
@@ -495,7 +472,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 396	104353	4	0	1000	1
 397	105554	4	0	1000	1
 398	91036	4	0	1000	1
-399	76335	4	0	1000	1
 400	127770	4	0	1000	1
 401	129396	4	0	1000	1
 402	125435	4	0	1000	1
@@ -510,7 +486,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 411	104957	4	0	1000	1
 412	102646	4	0	1000	1
 413	102830	4	0	1000	1
-414	76336	4	0	1000	1
 415	127626	4	0	1000	1
 416	129250	4	0	1000	1
 417	125483	4	0	1000	1
@@ -525,7 +500,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 426	104957	4	0	1000	1
 427	102463	4	0	1000	1
 428	102830	4	0	1000	1
-429	76333	4	0	1000	1
 430	127770	4	0	1000	1
 431	129396	4	0	1000	1
 432	125435	4	0	1000	1
@@ -540,7 +514,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 441	105920	4	0	1000	1
 442	104170	4	0	1000	1
 443	106103	4	0	1000	1
-444	76334	4	0	1000	1
 445	127626	4	0	1000	1
 446	129396	4	0	1000	1
 447	125483	4	0	1000	1
@@ -555,7 +528,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 456	104170	4	0	1000	1
 457	103986	4	0	1000	1
 458	106103	4	0	1000	1
-459	82359	4	0	1000	1
 460	77083	4	0	1000	1
 461	83449	4	0	1000	1
 462	79066	4	0	1000	1
@@ -563,7 +535,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 464	83453	4	0	1000	1
 465	83452	4	0	1000	1
 466	83451	4	0	1000	1
-467	82360	4	0	1000	1
 468	87682	4	0	1000	1
 469	83446	4	0	1000	1
 470	78062	4	0	1000	1
@@ -571,7 +542,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 472	82376	4	0	1000	1
 473	82383	4	0	1000	1
 474	83447	4	0	1000	1
-475	82394	4	0	1000	1
 476	101763	4	0	1000	1
 477	82390	4	0	1000	1
 478	87741	4	0	1000	1
@@ -579,8 +549,6 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 480	82526	4	0	1000	1
 481	82531	4	0	1000	1
 482	82536	4	0	1000	1
-483	124356	4	0	1000	1
-484	77733	4	0	1000	1
 485	77087	2	0	1000	1
 1	86851	1	0	1000	2
 2	87800	1	0	1000	2
@@ -1178,5 +1146,5 @@ SELECT pg_catalog.setval('webapi."NewCharacterTemplates_template_id_seq"', 9, tr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 2bDNFryv6lbmsNUaeAEsFCVGe9p1w7k2badFrJwftxoWraurrCzDtaECR8KxdR6
+\unrestrict Bl4kUtckUosOmR0UqUwZqoFzHrj1sg4or2ImlOcTIecTr5T4HOvydXf26ACIzdq
 

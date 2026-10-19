@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict GQ9AYEHQKmchK9CWKRTGP8hSvrNkoKqjPTYJziL7fnKVRjchwBH1yJF37TbLPZd
+\restrict BTbasBS3VXkGFnU2xx53bKM25c9zv0oK9FdpuVbGmQap1NLDI6d5nTkc8gviWmv
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -606,6 +606,25 @@ COMMENT ON FUNCTION webapi.build_template_from_char_create(p_template_name text,
 
 
 --
+-- Name: create_chassis_item_for_loadout(); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE FUNCTION webapi.create_chassis_item_for_loadout() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    INSERT INTO webapi."CharacterItems" (item_guid, character_guid, sdb_id, sub_inventory, loadout_id)
+    VALUES (webapi.create_entity_guid(253), NEW.character_guid, NEW.chassis_id, 4, NEW.loadout_id)
+    ON CONFLICT DO NOTHING;
+
+    RETURN NEW;
+END
+$$;
+
+
+ALTER FUNCTION webapi.create_chassis_item_for_loadout() OWNER TO tmwadmin;
+
+--
 -- Name: create_entity_guid(integer); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
 --
 
@@ -1005,16 +1024,19 @@ BEGIN
     DELETE FROM webapi."NewCharacterTemplateItems"        WHERE template_id = p_template_id;
     DELETE FROM webapi."NewCharacterTemplateBattleframes" WHERE template_id = p_template_id;
 
+    -- Chassis items are excluded: they belong to the loadout, and seeding makes them from
+    -- NewCharacterTemplateLoadouts. Keeping them here would seed each chassis twice.
     INSERT INTO webapi."NewCharacterTemplateItems" (template_id, template_item_id, sdb_id, sub_inventory, dynamic_flags, durability)
     SELECT p_template_id, row_number() OVER (ORDER BY item_guid), sdb_id, sub_inventory, dynamic_flags, durability
     FROM webapi."CharacterItems"
-    WHERE character_guid = char_guid;
+    WHERE character_guid = char_guid
+      AND loadout_id IS NULL;
 
     INSERT INTO webapi."NewCharacterTemplateItemModules" (template_id, template_item_id, slot_index, module_sdb_id)
     SELECT p_template_id, im.template_item_id, m.slot_index, m.module_sdb_id
     FROM webapi."CharacterItemModules" m
     JOIN (SELECT item_guid, row_number() OVER (ORDER BY item_guid) AS template_item_id
-          FROM webapi."CharacterItems" WHERE character_guid = char_guid) im USING (item_guid);
+          FROM webapi."CharacterItems" WHERE character_guid = char_guid AND loadout_id IS NULL) im USING (item_guid);
 
     INSERT INTO webapi."NewCharacterTemplateResources" (template_id, sdb_id, quantity, sub_inventory)
     SELECT p_template_id, sdb_id, quantity, sub_inventory
@@ -1032,7 +1054,7 @@ BEGIN
     JOIN (SELECT loadout_id, row_number() OVER (ORDER BY loadout_id) AS template_loadout_id
           FROM webapi."CharacterLoadouts" WHERE character_guid = char_guid) lm USING (loadout_id)
     JOIN (SELECT item_guid, row_number() OVER (ORDER BY item_guid) AS template_item_id
-          FROM webapi."CharacterItems" WHERE character_guid = char_guid) im USING (item_guid);
+          FROM webapi."CharacterItems" WHERE character_guid = char_guid AND loadout_id IS NULL) im USING (item_guid);
 
     INSERT INTO webapi."NewCharacterTemplateLoadoutPerks" (template_id, template_loadout_id, perk_item_sdb_id, level)
     SELECT p_template_id, lm.template_loadout_id, k.perk_item_sdb_id, k.level
@@ -1361,11 +1383,19 @@ CREATE TABLE webapi."CharacterItems" (
     sub_inventory smallint DEFAULT 1 NOT NULL,
     dynamic_flags smallint DEFAULT 0 NOT NULL,
     durability integer DEFAULT 1000 NOT NULL,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    loadout_id bigint
 );
 
 
 ALTER TABLE webapi."CharacterItems" OWNER TO tmwadmin;
+
+--
+-- Name: COLUMN "CharacterItems".loadout_id; Type: COMMENT; Schema: webapi; Owner: tmwadmin
+--
+
+COMMENT ON COLUMN webapi."CharacterItems".loadout_id IS 'Set on the one item that is a loadout''s chassis: the item the client API names as a garage slot''s item_guid. NULL on ordinary items. Unique where set, so a loadout has exactly one chassis, and ON DELETE CASCADE so the item goes with the loadout.';
+
 
 --
 -- Name: CharacterLoadoutPerks; Type: TABLE; Schema: webapi; Owner: tmwadmin
@@ -2413,6 +2443,13 @@ CREATE UNIQUE INDEX accounts_uid_uindex ON webapi."Accounts" USING btree (uid);
 
 
 --
+-- Name: character_items_loadout_id_uindex; Type: INDEX; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE UNIQUE INDEX character_items_loadout_id_uindex ON webapi."CharacterItems" USING btree (loadout_id) WHERE (loadout_id IS NOT NULL);
+
+
+--
 -- Name: characters_name_uindex; Type: INDEX; Schema: webapi; Owner: tmwadmin
 --
 
@@ -2522,6 +2559,13 @@ CREATE TRIGGER character_events_trigger AFTER UPDATE ON webapi."Characters" FOR 
 --
 
 CREATE TRIGGER character_unlock_events_trigger AFTER INSERT OR DELETE ON webapi."CharacterUnlocks" FOR EACH ROW EXECUTE FUNCTION webapi.notify_on_unlock_events();
+
+
+--
+-- Name: CharacterLoadouts loadout_chassis_item_trigger; Type: TRIGGER; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TRIGGER loadout_chassis_item_trigger AFTER INSERT ON webapi."CharacterLoadouts" FOR EACH ROW WHEN ((new.loadout_type = 'battleframe'::text)) EXECUTE FUNCTION webapi.create_chassis_item_for_loadout();
 
 
 --
@@ -2645,6 +2689,14 @@ ALTER TABLE ONLY webapi."CharacterItems"
 
 
 --
+-- Name: CharacterItems character_items_loadout_id_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterItems"
+    ADD CONSTRAINT character_items_loadout_id_fkey FOREIGN KEY (loadout_id) REFERENCES webapi."CharacterLoadouts"(loadout_id) ON DELETE CASCADE;
+
+
+--
 -- Name: CharacterLoadoutSlots character_loadout_slots_item_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -2760,5 +2812,5 @@ ALTER TABLE ONLY webapi."VipData"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict GQ9AYEHQKmchK9CWKRTGP8hSvrNkoKqjPTYJziL7fnKVRjchwBH1yJF37TbLPZd
+\unrestrict BTbasBS3VXkGFnU2xx53bKM25c9zv0oK9FdpuVbGmQap1NLDI6d5nTkc8gviWmv
 

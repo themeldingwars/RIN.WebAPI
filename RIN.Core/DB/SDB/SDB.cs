@@ -49,5 +49,45 @@ namespace RIN.Core.DB.SDB
 
             return result;
         }
+
+        // The palettes the garage sells as chassis paint. type_flags 16 is "full body".
+        public async Task<IEnumerable<CosmeticInfo>> GetWarpaintsInfoList()
+        {
+            const string SELECT_SQL = @"SELECT id
+                FROM sdb.""dbvisualrecords::WarpaintPalette""
+                WHERE type_flags = 16
+                ORDER BY id";
+
+            var result = await DBCall(conn => conn.QueryAsync<CosmeticInfo>(SELECT_SQL, new { }));
+
+            return result;
+        }
+
+        // Warpaint patterns (camo, stripes, gradients) the garage sells.
+        public async Task<IEnumerable<CosmeticInfo>> GetCziPatternsInfoList()
+        {
+            const string SELECT_SQL = @"SELECT patterns.id, lang.english AS lang_name
+                FROM sdb.""dbvisualrecords::CziPattern"" AS patterns
+                LEFT JOIN sdb.""dblocalization::LocalizedText"" AS lang ON lang.id = patterns.name_id
+                ORDER BY patterns.id";
+
+            var result = await DBCall(conn => conn.QueryAsync<CosmeticInfo>(SELECT_SQL, new { }));
+
+            return result;
+        }
+
+        // Decals / tattoos the garage sells.
+        public async Task<IEnumerable<CosmeticInfo>> GetTattooDecalsInfoList()
+        {
+            const string SELECT_SQL = @"SELECT decals.id, lang.english AS lang_name
+                FROM sdb.""dbvisualrecords::TattooDecal"" AS decals
+                LEFT JOIN sdb.""dblocalization::LocalizedText"" AS lang ON lang.id = decals.localized_name_id
+                ORDER BY decals.id";
+
+            var result = await DBCall(conn => conn.QueryAsync<CosmeticInfo>(SELECT_SQL, new { }));
+
+            return result;
+        }
+
     }
 }

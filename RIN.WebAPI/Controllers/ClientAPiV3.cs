@@ -32,63 +32,67 @@ namespace RIN.WebAPI.Controllers
 
         [HttpGet("characters/{characterGuid}/garage_slots")]
         [R5SigAuthRequired]
-        public async Task<List<GarageSlot>> GarageSlots(long characterGuid)
+        public async Task<IEnumerable<GarageSlot>> GarageSlots(long characterGuid)
         {
-            var slots = new List<GarageSlot>()
-            {
-                new GarageSlot()
-                {
-                    id                = 0,
-                    name              = "Crafting Station",
-                    character_guid    = characterGuid,
-                    garage_type       =  "crafting_station",
-                    item_guid         = 0,
-                    equipped_slots    = [],
-                    limits            = new SlotLimits() { abilities = 4 },
-                    decals            = new List<Decal>(),
-                    visual_loadout_id = 0,
-                    warpaint_id       = 0,
-                    warpaintpatterns  = new List<WarpaintPattern>(),
-                    visual_overrides  = new List<VisualOverride>(),
-                    unlocked          = true,
-                    expires_in_secs   = 0
-                }
-            };
-
-            return slots;
+            return await Db.GetGarageSlots(characterGuid);
         }
 
+        [HttpGet("garage_slots/battleframes_for_sale")]
+        [R5SigAuthRequired]
+        public async Task<object> BattleframesForSale()
+        {
+            return Content("{}", "application/json");
+        }
+
+        // The client calls this "visuals_v2": the garage posts { types = { warpaints, czi_patterns, decals,
+        // visual_overrides } } when it opens, and the character customisation screen posts
+        // { types = { head, head_accessory, ornaments } }. The body is ignored - every type is sent to both,
+        // and each screen only reads the remote_types it knows.
+        //
+        // A product only has to carry remote_type, remote_id and prices: the client keys the response by
+        // remote_type + remote_id and resolves the name, colours and texture out of its own copy of the sdb
+        // (Game.GetWarpaintInfo / GetWarpaintPatternInfo / GetDecalInfo).
         [HttpPost("trade/products")]
         [R5SigAuthRequired]
         public async Task<List<TradeItem>> TradeProducts()
         {
-            var cosmeticsInfos = await SDB.GetOrnamentsInfoList();
             var items = new List<TradeItem>();
-            foreach (var info in cosmeticsInfos)
+
+            void AddProduct(int remoteId, string remoteType, string name, int amount, int priceId)
             {
-                var tradeItem = new TradeItem
+                items.Add(new TradeItem
                 {
-                    duration    = 0,
-                    id          = info.id,
-                    remote_id   = info.id,
-                    name        = info.lang_name,
-                    quanity     = 1,
-                    remote_type = "ornaments",
-                    prices      = new[]
+                    duration       = 0,
+                    id             = remoteId,
+                    remote_id      = remoteId,
+                    name           = name,
+                    quantity       = 0,
+                    remote_type    = remoteType,
+                    prices         = new[]
                     {
                         new TradePrice
                         {
-                            amount             = 0,
+                            amount             = amount,
                             currency_remote_id = 0,
                             currency_type      = "redbean",
-                            id                 = 171201
+                            id                 = priceId
                         }
                     },
                     unlock_context = "account"
-                };
-
-                items.Add(tradeItem);
+                });
             }
+
+            foreach (var info in await SDB.GetOrnamentsInfoList())
+                AddProduct(info.id, "ornaments", info.lang_name, 0, 171201);
+
+            foreach (var info in await SDB.GetWarpaintsInfoList())
+                AddProduct(info.id, "warpaints", info.lang_name, 1, 0);
+
+            foreach (var info in await SDB.GetCziPatternsInfoList())
+                AddProduct(info.id, "czi_patterns", info.lang_name, 1, 0);
+
+            foreach (var info in await SDB.GetTattooDecalsInfoList())
+                AddProduct(info.id, "decals", info.lang_name, 1, 0);
 
             return items;
         }

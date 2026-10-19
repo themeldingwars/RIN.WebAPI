@@ -1,4 +1,5 @@
 using Dapper;
+using RIN.Core.Common;
 using System.Linq;
 
 namespace RIN.Core.DB
@@ -62,6 +63,24 @@ namespace RIN.Core.DB
             });
 
             return result;
+        }
+
+        /// <summary>
+        /// The character's garage slots for the client API: one per loadout, each naming the inventory item of
+        /// the chassis that loadout is built on.
+        /// </summary>
+        public async Task<IEnumerable<GarageSlot>> GetGarageSlots(long characterGuid)
+        {
+            const string SELECT_SQL = @"
+                SELECT l.loadout_id AS id,
+                       coalesce((SELECT ci.item_guid
+                                 FROM webapi.""CharacterItems"" ci
+                                 WHERE ci.loadout_id = l.loadout_id), 0) AS item_guid
+                FROM webapi.""CharacterLoadouts"" l
+                WHERE l.character_guid = @characterGuid
+                ORDER BY l.loadout_id";
+
+            return await DBCall(async conn => await conn.QueryAsync<GarageSlot>(SELECT_SQL, new { characterGuid }));
         }
 
         public async Task<bool> SaveInventoryItem(long characterGuid, long itemGuid, int sdbId, short subInventory, short dynamicFlags, int durability, List<InventorySeedModule> modules)
@@ -155,7 +174,8 @@ namespace RIN.Core.DB
         {
             const string DELETE_SQL = @"DELETE FROM webapi.""CharacterItems""
                                         WHERE item_guid = @itemGuid
-                                          AND character_guid = @characterGuid";
+                                          AND character_guid = @characterGuid
+                                          AND loadout_id IS NULL";
 
             var affected = await DBCall(conn => conn.ExecuteAsync(DELETE_SQL, new { characterGuid, itemGuid }));
             return affected > 0;
