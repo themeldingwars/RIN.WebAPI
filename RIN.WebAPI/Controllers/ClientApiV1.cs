@@ -1,12 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Transactions;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
+﻿using System.Transactions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RIN.Core.DB.SDB;
 using RIN.Core;
@@ -194,7 +187,7 @@ namespace RIN.WebAPI.Controllers
                 voice_setId       = reqData.voice_set,
                 gender            = reqData.gender
             };
-            
+
             return createData;
         }
 

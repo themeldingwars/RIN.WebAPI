@@ -1,7 +1,5 @@
-﻿using System.Collections.Generic;
-using ProtoBuf;
+﻿using ProtoBuf;
 using RIN.Core.ClientApi;
-using RIN.Core.Common;
 using RIN.Core.Models.ClientApi;
 
 namespace RIN.Core.DB
@@ -15,7 +13,7 @@ namespace RIN.Core.DB
         [ProtoMember(4)] public List<int>       decalgradients    { get; set; }
         [ProtoMember(5)] public List<int>       warpaint_patterns { get; set; }
         [ProtoMember(6)] public List<int>       visual_overrides  { get; set; }
-        
+
         public void ApplyToCharacterVisuals(CharacterBattleframeCombinedVisuals cVisuals)
         {
             cVisuals.decals            = decals;
@@ -28,7 +26,7 @@ namespace RIN.Core.DB
             // carry a pattern's transform or its chassis region, so the web API's pattern list is built from
             // webapi."CharacterLoadoutVisuals" instead - see LoadoutVisuals.Build.
         }
-        
+
         public static PlayerBattleframeVisuals CreateDefault()
         {
             var visuals = new PlayerBattleframeVisuals

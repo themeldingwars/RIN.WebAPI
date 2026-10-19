@@ -41,7 +41,7 @@ namespace RIN.Core.DB
 
         public async Task<List<Character>> GetCharactersForAccount(long accountId)
         {
-            const string SELECT_SQL = @"SELECT 
+            const string SELECT_SQL = @"SELECT
 		                        webapi.""Characters"".character_guid,
 		                        name,
 		                        unique_name,
@@ -65,7 +65,7 @@ namespace RIN.Core.DB
 				                        LEFT JOIN
 					                        webapi.""DeletionQueue"" as DeletionQueue
 						                        ON DeletionQueue.character_guid = webapi.""Characters"".character_guid
-						
+
 				                        LEFT JOIN
 					                        webapi.""Battleframes"" as Battleframes
 						                        ON Battleframes.id = webapi.""Characters"".current_battleframe_guid
@@ -106,7 +106,7 @@ namespace RIN.Core.DB
 
                 if ((result.visuals as byte[]).Length > 0) {
                     var charaterVisuals = Serializer.Deserialize<CharacterVisuals>((result.visuals as byte[]).AsSpan());
-                    
+
                     charaterVisuals.ornaments ??= new List<WebId>();
 
                     character.visuals = new CharacterBattleframeCombinedVisuals();
@@ -123,16 +123,16 @@ namespace RIN.Core.DB
 
         public async Task<(BasicCharacterInfo info, CharacterVisuals visuals)> GetBasicCharacterAndVisualData(long charId)
         {
-            const string SELECT_SQL = @"SELECT c.name, title_id, gender, race, current_battleframe_guid, bf.battleframe_sdb_id AS CurrentBattleframeSDBId, 
-                                a.tag as ArmyTag, a.army_guid as ArmyGUID, ar.is_officer as ArmyIsOfficer, 
+            const string SELECT_SQL = @"SELECT c.name, title_id, gender, race, current_battleframe_guid, bf.battleframe_sdb_id AS CurrentBattleframeSDBId,
+                                a.tag as ArmyTag, a.army_guid as ArmyGUID, ar.is_officer as ArmyIsOfficer,
                                 last_zone_id as LastZoneId, last_outpost_id as LastOutpostId, c.time_played_secs as TimePlayed,  c.visuals
 	                        FROM webapi.""Characters"" as c
                                 LEFT JOIN
 					                webapi.""Battleframes"" as bf
 						                ON bf.id = c.current_battleframe_guid
-	                            LEFT JOIN webapi.""ArmyMembers"" as am 
+	                            LEFT JOIN webapi.""ArmyMembers"" as am
 	                                    ON c.character_guid = am.character_guid
-	                            LEFT JOIN webapi.""Armies"" as a 
+	                            LEFT JOIN webapi.""Armies"" as a
 	                                    ON am.army_guid = a.army_guid
 	                            LEFT JOIN webapi.""ArmyRanks"" as ar
 	                                    ON am.army_rank_id = ar.army_rank_id
@@ -175,12 +175,12 @@ namespace RIN.Core.DB
 
             return result > 0;
         }
-        
+
         public async Task<bool> UpdateCharacterAfterGameSession(long charId, int zoneId, int outpostId, int timePlayed)
         {
             const string UPDATE_SQL = @"UPDATE webapi.""Characters""
-                                SET last_zone_id = @zoneId, 
-                                    last_outpost_id = @outpostId, 
+                                SET last_zone_id = @zoneId,
+                                    last_outpost_id = @outpostId,
                                     time_played_secs = time_played_secs + @timePlayed
                                 WHERE character_guid = @charId;";
 
@@ -209,7 +209,7 @@ namespace RIN.Core.DB
             // TODO: Move calls to be inside the database to make a single DB call
 
             // Check if character exists and is owned by the account
-            const string CHAR_SELECT_SQL = @"SELECT 
+            const string CHAR_SELECT_SQL = @"SELECT
                             character_guid
                             FROM webapi.""Characters""
                             WHERE account_id = @accountId
@@ -230,7 +230,7 @@ namespace RIN.Core.DB
             }
 
             // Check if character is an army commander and prevent delete process if true
-            const string IS_COMMANDER_SQL = @"SELECT 
+            const string IS_COMMANDER_SQL = @"SELECT
                             character_guid
                             FROM webapi.""ArmyMembers"" am
                             INNER JOIN webapi.""ArmyRanks"" ar on ar.army_rank_id = am.army_rank_id
@@ -251,7 +251,7 @@ namespace RIN.Core.DB
             }
 
             // Check if character is already marked for deletion
-            const string SELECT_SQL = @"SELECT 
+            const string SELECT_SQL = @"SELECT
                             character_guid,
                             deleted_at
                             FROM webapi.""DeletionQueue""
@@ -282,8 +282,8 @@ namespace RIN.Core.DB
 
             // Uncomment to instantly delete character instead of waiting (for dev-use only)
             /*
-            const string DELETE_SQL = @"DELETE 
-                        FROM webapi.""Characters"" 
+            const string DELETE_SQL = @"DELETE
+                        FROM webapi.""Characters""
                         WHERE account_id = @accountId
                         AND character_guid = @characterGuid";
 
@@ -298,7 +298,7 @@ namespace RIN.Core.DB
             // TODO: Potentially move this function into the database to reduce DB calls
 
             // Check if character exists and is owned by the account
-            const string SELECT_SQL = @"SELECT 
+            const string SELECT_SQL = @"SELECT
                             webapi.""Characters"".character_guid,
                             DeletionQueue.deleted_at,
                             DeletionQueue.expires_in
@@ -334,7 +334,7 @@ namespace RIN.Core.DB
         public async Task<bool> CheckIfNameIsFree(string name)
         {
             string unique_name = name.ToUpper();
-            const string SELECT_SQL = @"SELECT 
+            const string SELECT_SQL = @"SELECT
                             name
                             FROM webapi.""Characters""
                             WHERE name = @name
@@ -351,9 +351,9 @@ namespace RIN.Core.DB
                 return false;
             }
         }
-        
+
         public async Task<bool> IsMemberOfArmy(long characterGuid, long? armyGuid = null)
-        { 
+        {
             string selectSql = @"
                 SELECT character_guid
                 FROM webapi.""ArmyMembers""
@@ -372,7 +372,7 @@ namespace RIN.Core.DB
         public async Task<IEnumerable<ArmyApplication>> GetPersonalArmyApplications(long characterGuid)
         {
             const string SELECT_SQL = @"
-                SELECT id, a.name AS army_name, army_guid, character_guid, message, 'apply' as direction 
+                SELECT id, a.name AS army_name, army_guid, character_guid, message, 'apply' as direction
                 FROM webapi.""ArmyApplications"" aa
                 INNER JOIN webapi.""Armies"" a USING(army_guid)
                 WHERE character_guid = @characterGuid AND inviter_guid IS NULL";
@@ -383,7 +383,7 @@ namespace RIN.Core.DB
         public async Task<IEnumerable<ArmyApplication>> GetPersonalArmyInvites(long characterGuid)
         {
             const string SELECT_SQL = @"
-                SELECT id, a.name AS army_name, army_guid, character_guid, message, 'invite' AS direction 
+                SELECT id, a.name AS army_name, army_guid, character_guid, message, 'invite' AS direction
                 FROM webapi.""ArmyApplications"" aa
                 INNER JOIN webapi.""Armies"" a USING(army_guid)
                 WHERE character_guid = @characterGuid AND inviter_guid IS NOT NULL";

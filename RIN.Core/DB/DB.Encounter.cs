@@ -10,8 +10,8 @@ public partial class DB
         const int perPage = 15;
 
         const string SELECT_SQL = @"
-                SELECT 
-                    COUNT(*) AS total_count, 
+                SELECT
+                    COUNT(*) AS total_count,
                     l.name
                 FROM webapi.""LeaderboardEntries"" le
                 INNER JOIN webapi.""Leaderboards"" l ON le.leaderboard_id = l.id

@@ -10,8 +10,8 @@ namespace RIN.WebAPI.Models.ClientApi
         public string password     { get; set; }
         public string country      { get; set; }
         public string birthday     { get; set; }
-        
-        
+
+
         public string? steam_session_ticket { get; set; }
         public string? steam_user_id        { get; set; }
         public string? steam_cdkey          { get; set; }

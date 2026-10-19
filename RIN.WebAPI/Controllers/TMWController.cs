@@ -1,14 +1,10 @@
-﻿using System.Linq;
-using System.Net.Mime;
-using System.Text;
+﻿using System.Text;
 using System.Web;
 using FauFau.Net.Web;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 using RIN.Core;
-using RIN.WebAPI.Models;
 
 namespace RIN.WebAPI.Controllers
 {

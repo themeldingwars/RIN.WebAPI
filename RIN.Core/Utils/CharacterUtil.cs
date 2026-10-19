@@ -32,7 +32,7 @@ namespace RIN.Core.Utils
 
             return visuals;
         }
-        
+
         public static byte GenderStrToNum(string gender) => string.Equals(gender, "female", StringComparison.InvariantCultureIgnoreCase) ? (byte)1 : (byte)0;
 
         public static string GenderNumToString(int gender)

@@ -12,11 +12,11 @@ namespace RIN.Core.DB
         public async Task<PageResults<ArmyListItem>> GetArmies(int page, int perPage, string searchQuery)
         {
             const string SELECT_SQL = @"
-                SELECT COUNT(*) AS total_count 
+                SELECT COUNT(*) AS total_count
                 FROM webapi.""Armies"" a
                 WHERE @searchQuery IS NULL OR name ILIKE @searchQuery;
 
-                SELECT 
+                SELECT
                     army_guid,
                     name,
                     personality,
@@ -25,7 +25,7 @@ namespace RIN.Core.DB
                     (SELECT COUNT(*) FROM webapi.""ArmyMembers"" am WHERE am.army_guid = a.army_guid) AS member_count
                 FROM webapi.""Armies"" a
                 WHERE @searchQuery IS NULL OR name ILIKE @searchQuery
-                ORDER BY LOWER(name) ASC 
+                ORDER BY LOWER(name) ASC
                 LIMIT @perPage OFFSET @offset";
 
             var p = new DynamicParameters();
@@ -355,11 +355,11 @@ namespace RIN.Core.DB
         public async Task<PageResults<ArmyMember>> GetArmyMembers(long armyGuid, int page, int perPage)
         {
             const string SELECT_SQL = @"
-                SELECT COUNT(*) AS total_count 
+                SELECT COUNT(*) AS total_count
                 FROM webapi.""ArmyMembers"" am
                 WHERE am.army_guid = @armyGuid;
 
-                SELECT 
+                SELECT
                     am.character_guid,
                     am.army_rank_id,
                     ar.position AS rank_position,
@@ -410,7 +410,7 @@ namespace RIN.Core.DB
         public async Task<ArmyRank> GetArmyRankForMember(long armyGuid, long characterGuid)
         {
             const string SELECT_SQL = @"
-                SELECT 
+                SELECT
                     ar.army_rank_id as id,
                     ar.army_guid,
                     ar.name,
@@ -471,9 +471,9 @@ namespace RIN.Core.DB
             const string DELETE_SQL = @"
                 DELETE FROM webapi.""ArmyMembers"" am
                     USING webapi.""ArmyRanks"" ar
-                WHERE 
+                WHERE
                     am.army_rank_id = ar.army_rank_id
-                    AND am.army_guid = @armyGuid 
+                    AND am.army_guid = @armyGuid
                     AND am.character_guid = ANY(@characterGuids)
                     AND ar.position > @initiatorRankPosition;";
 
@@ -485,10 +485,10 @@ namespace RIN.Core.DB
         public async Task<object> GetArmyApplications(long armyGuid)
         {
             const string SELECT_SQL = @"
-                SELECT 
-                    army_guid, 
-                    message, 
-                    id, 
+                SELECT
+                    army_guid,
+                    message,
+                    id,
                     name,
                     'apply' as direction
                 FROM webapi.""ArmyApplications"" aa

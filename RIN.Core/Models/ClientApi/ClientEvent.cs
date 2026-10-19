@@ -14,14 +14,14 @@ namespace RIN.Core.ClientApi
             [EnumMember(Value = "crash")]
             Crash
         }
-        
+
         public struct Data
         {
             public string message { get; set; }
             public string source  { get; set; }
             public string data    { get; set; }
         }
-        
+
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public Events @event { get; set; }
         public string action { get; set; }

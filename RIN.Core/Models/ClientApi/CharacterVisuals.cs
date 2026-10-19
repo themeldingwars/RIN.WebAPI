@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using ProtoBuf;
+﻿using ProtoBuf;
 using RIN.Core.Common;
 using RIN.Core.Models.ClientApi;
 

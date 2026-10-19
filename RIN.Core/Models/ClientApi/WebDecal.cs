@@ -7,6 +7,6 @@ namespace RIN.Core.Models.ClientApi
     {
         [ProtoMember(1)] public int sdb_id { get; set; }
         [ProtoMember(2)] public uint color { get; set; }
-        [ProtoMember(3)] public float[] transform { get; set; } 
+        [ProtoMember(3)] public float[] transform { get; set; }
     }
 }

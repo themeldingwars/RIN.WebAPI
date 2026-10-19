@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Runtime;
-using System.Threading.RateLimiting;
-using ProtoBuf;
+﻿using ProtoBuf;
 using RIN.Core.ClientApi;
 using RIN.Core.Common;
 using RIN.Core.Models;
@@ -28,7 +25,7 @@ namespace RIN.Core.DB
         [ProtoMember(15)] public WebIdValueColorId     facial_hair       { get; set; }
         [ProtoMember(16)] public WebId                 glider            { get; set; }
         [ProtoMember(17)] public WebId                 vehicle           { get; set; }
-        
+
         public void ApplyToCharacterVisuals(CharacterBattleframeCombinedVisuals cVisuals)
         {
             //cVisuals.id                = id;
@@ -55,7 +52,7 @@ namespace RIN.Core.DB
             var loadout = new PlayerVisualLoadout()
             {
                 character_guid       = charId,
-                id                   = id, 
+                id                   = id,
                 race                 = race,
                 gender               = gender,
                 skin_color_id        = skin_color.id,

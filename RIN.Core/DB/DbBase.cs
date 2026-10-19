@@ -15,13 +15,13 @@ namespace RIN.Core.DB
 
         public    string ConnStr;
         protected bool   LogDbTimes;
-        
+
         public DbBase(IOptions<DbConnectionSettings> config, ILogger<DbBase> logger)
         {
             Config        = config.Value;
             Logger        = logger;
         }
-        
+
         private async Task<int> Execute(string sql, object prams, Action<Exception> onError = null!)
         {
             try {
@@ -48,13 +48,13 @@ namespace RIN.Core.DB
                     sw.Stop();
                     Logger.LogInformation("DB call {functionName} took {elapsed} ({ms}ms)", functionName, sw.Elapsed, sw.Elapsed.TotalMilliseconds);
                 }
-                
+
                 return result;
             }
             catch (Exception e) {
                 onError?.Invoke(e);
                 Logger.LogError($"{functionName}: {e}");
-                
+
                 return default;
             }
         }

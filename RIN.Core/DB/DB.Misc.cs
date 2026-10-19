@@ -6,7 +6,6 @@ namespace RIN.Core.DB
 {
     public partial class DB
     {
-        
         // Log a client event from the client to the DB
         public async Task<bool> LogClientEvent(ClientEvent evnt, string userId = null!)
         {
@@ -28,7 +27,7 @@ namespace RIN.Core.DB
 
             bool hasUserId = userId != null && userId.Trim().Length > 0;
             var  sql       = hasUserId ? INSERT_SQL_WITH_USER : INSERT_SQL;
-            
+
             var result = await DBCall(conn => conn.ExecuteAsync(sql, log),
                 exception =>
                 {

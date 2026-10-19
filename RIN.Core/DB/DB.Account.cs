@@ -51,10 +51,10 @@ namespace RIN.Core.DB
                 created_at,
                 secret,
                 character_limit,
-                true AS                                                             can_login,      
+                true AS                                                             can_login,
                 (vip.expiration_date > vip.start_date AND vip.account_id            IS NOT          NULL) AS is_vip,
-                COALESCE(EXTRACT(EPOCH FROM vip.expiration_date) * 1000, -1) AS vip_expiration, 
-                '' AS                                                               error,          
+                COALESCE(EXTRACT(EPOCH FROM vip.expiration_date) * 1000, -1) AS vip_expiration,
+                '' AS                                                               error,
                 '' AS                                                               error_msg
 
                 FROM webapi.""Accounts""
@@ -89,7 +89,7 @@ namespace RIN.Core.DB
             var result = await DBCall(conn => conn.ExecuteAsync(UPDATE_SQL, new { language, accountId }));
 
             return result > 0;
-        } 
+        }
 
         public async Task<AccountMTX> GetAccountMTXData(long accountId)
         {

@@ -31,20 +31,20 @@ namespace RIN.WebAPI.Controllers
             var result = await Sdb.GetNewCharactersColors(eyeColorId, skinColorId, hairColorId);
             return result;
         }
-        
+
         [HttpGet("RegisterAccount")]
         public async Task<object> RegisterAccount(string email, string password, string country, DateTime? birthday, string? referralKey = null, bool emailOpin = false)
         {
             var (accountId, error) = await Db.RegisterNewAccount(email, password, country, birthday ?? DateTime.Now, referralKey!, emailOpin);
             return new { account_id = accountId, error };
         }
-        
+
         [HttpGet("TestException")]
         public async Task TestException()
         {
             throw new TmwException();
         }
-        
+
         [HttpGet("TestException2")]
         public async Task TestException2()
         {

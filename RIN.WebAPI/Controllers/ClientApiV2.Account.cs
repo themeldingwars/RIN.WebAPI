@@ -21,7 +21,7 @@ namespace RIN.WebAPI.Controllers
             var loginResult = await Db.GetLoginData(uid);
 
             // Email not found
-            if (loginResult == null) 
+            if (loginResult == null)
                 return invalidLoginError;
 
             var result = await R5SigAuth.VerifyRequest(Request, loginResult.secret, Config.Red5SigMaxClockSkew);

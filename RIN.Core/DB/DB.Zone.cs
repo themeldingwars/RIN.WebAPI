@@ -34,14 +34,14 @@ namespace RIN.Core.DB
                    zs.challenge_min_players_per_team,
                    zs.challenge_max_players_per_team,
                    zs.images AS images_json,
-           
+
                    zc.id as certificate_id,
                    zc.zone_setting_id,
                    zc.cert_id,
                    zc.authorize_position,
                    zc.difficulty_key,
                    zc.presence,
-                    
+
                    zd.id as difficulty_id,
                    zd.zone_setting_id,
                    zd.difficulty_key,

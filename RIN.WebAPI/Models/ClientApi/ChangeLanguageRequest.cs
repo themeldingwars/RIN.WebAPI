@@ -1,7 +1,4 @@
-﻿using RIN.Core.ClientApi;
-using System.Collections.Generic;
-
-namespace RIN.WebAPI.Models.ClientApi
+﻿namespace RIN.WebAPI.Models.ClientApi
 {
     public class ChangeLanguageRequest
     {

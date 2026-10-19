@@ -3,7 +3,7 @@
     public class TmwException : Exception
     {
         public Error Error;
-        
+
         public TmwException(string? errorCode = null, string? errorMessage = null)
             : base(errorCode == errorMessage ? errorCode : $"{errorCode}: {errorMessage}")
         {

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace RIN.Core.Common
+﻿namespace RIN.Core.Common
 {
     public class TradeItem
     {
