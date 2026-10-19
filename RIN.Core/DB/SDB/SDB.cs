@@ -89,5 +89,49 @@ namespace RIN.Core.DB.SDB
             return result;
         }
 
+        /// <summary>
+        /// Turn a stored visual set into the web API's warpaint colours.
+        /// </summary>
+        public async Task<IEnumerable<WarpaintPaletteColors>> GetWarpaintPalettesInfo(int[] paletteIds)
+        {
+            if (paletteIds == null || paletteIds.Length == 0)
+                return new List<WarpaintPaletteColors>();
+
+            const string SELECT_SQL = @"SELECT id, type_flags,
+                                                color1_highlight, color1_shadow,
+                                                color2_highlight, color2_shadow,
+                                                color3_highlight, color3_shadow,
+                                                color4_highlight, color4_shadow,
+                                                color5_highlight, color5_shadow,
+                                                color6_highlight, color6_shadow,
+                                                color7_highlight, color7_shadow
+                FROM sdb.""dbvisualrecords::WarpaintPalette""
+                WHERE id = ANY(@paletteIds)";
+
+            var result = await DBCall(conn => conn.QueryAsync<WarpaintPaletteColors>(SELECT_SQL, new { paletteIds }));
+
+            return result;
+        }
+
+        /// <summary>
+        /// The palettes these chassis start with.
+        /// </summary>
+        public async Task<IEnumerable<BattleframePaletteDefaults>> GetBattleframeDefaultPalettes(int[] chassisSdbIds)
+        {
+            if (chassisSdbIds == null || chassisSdbIds.Length == 0)
+                return new List<BattleframePaletteDefaults>();
+
+            const string SELECT_SQL = @"SELECT id AS battleframe_sdb_id,
+                                                default_fullbody_palette_id,
+                                                default_armor_palette_id,
+                                                default_bodysuit_palette_id,
+                                                default_glow_palette_id
+                FROM sdb.""dbitems::Battleframe""
+                WHERE id = ANY(@chassisSdbIds)";
+
+            var result = await DBCall(conn => conn.QueryAsync<BattleframePaletteDefaults>(SELECT_SQL, new { chassisSdbIds }));
+
+            return result;
+        }
     }
 }

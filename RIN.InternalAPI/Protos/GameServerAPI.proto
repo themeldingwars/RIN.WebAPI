@@ -110,6 +110,7 @@ message CharacterInventoryResponse {
    repeated CharacterLoadout Loadouts = 3;
    repeated CharacterLoadoutSlotEntry Slots = 4;
    repeated CharacterLoadoutPerkEntry LoadoutPerks = 5;
+   repeated CharacterLoadoutVisualsEntry Visuals = 6;
 }
 message CharacterItem {
    uint64 Guid = 1;
@@ -135,6 +136,11 @@ message CharacterLoadoutSlotEntry {
    uint32 ConfigId = 2;
    uint32 SlotIndex = 3;
    int64 ItemGuid = 4;
+}
+message CharacterLoadoutVisualsEntry {
+   int32 LoadoutId = 1;
+   uint32 ConfigId = 2;
+   repeated LoadoutVisual Visuals = 3;
 }
 message CharacterResource {
    uint32 SdbId = 1;
@@ -201,6 +207,7 @@ message Command {
       SaveLoadoutPerk SaveLoadoutPerk = 21;
       DeleteLoadoutPerk DeleteLoadoutPerk = 22;
       SaveBattleframeBandwidth SaveBattleframeBandwidth = 23;
+      SaveLoadoutVisuals SaveLoadoutVisuals = 24;
    }
 }
 message DeleteCharacterUnlock {
@@ -268,6 +275,11 @@ message InventoryLoadoutSlotData {
    uint32 SlotIndex = 3;
    int64 ItemGuid = 4;
 }
+message InventoryLoadoutVisualData {
+   int32 LoadoutId = 1;
+   uint32 ConfigId = 2;
+   repeated LoadoutVisual Visuals = 3;
+}
 message InventoryResourceData {
    uint32 SdbId = 1;
    uint32 Quantity = 2;
@@ -279,6 +291,13 @@ message InventoryUpdated {
 message ItemModule {
    uint32 SlotIndex = 1;
    uint32 ModuleSdbId = 2;
+}
+message LoadoutVisual {
+   uint32 VisualType = 1;
+   uint32 ItemSdbId = 2;
+   uint32 Data1 = 3;
+   uint32 Data2 = 4;
+   repeated float Transform = 5 [packed = false];
 }
 message LoginAuthorizationRequest {
    bytes Ticket = 1;
@@ -402,6 +421,12 @@ message SaveLoadoutSlot {
    uint32 SlotIndex = 4;
    int64 ItemGuid = 5;
 }
+message SaveLoadoutVisuals {
+   uint64 CharacterGuid = 1;
+   int32 LoadoutId = 2;
+   uint32 ConfigId = 3;
+   repeated LoadoutVisual Visuals = 4;
+}
 message SeedCharacterFromTemplate {
    uint64 CharacterGuid = 1;
    uint32 TemplateId = 2;
@@ -412,6 +437,7 @@ message SeedCharacterInventory {
    repeated InventoryResourceData Resources = 3;
    repeated InventoryLoadoutData Loadouts = 4;
    repeated InventoryLoadoutSlotData Slots = 5;
+   repeated InventoryLoadoutVisualData Visuals = 6;
 }
 message TransferCharacterReq {
    uint64 CharacterId = 1;
@@ -434,7 +460,7 @@ message WebColorId {
 }
 message WebDecal {
    int32 sdb_id = 1;
-   int32 color = 2;
+   uint32 color = 2;
    repeated float transform = 3 [packed = false];
 }
 message WebId {

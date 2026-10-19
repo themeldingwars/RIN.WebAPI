@@ -91,7 +91,7 @@ namespace RIN.Core.Utils
             if (cv.eye_color.id != updates.eye_color_id)
             {
                 cv.eye_color.id = updates.eye_color_id;
-                cv.eye_color.value.color = colors.SkinColor;
+                cv.eye_color.value.color = colors.EyeColor;
             }
 
             if (cv.hair.id != updates.hair_id)
@@ -113,6 +113,13 @@ namespace RIN.Core.Utils
                 cv.facial_hair.id                 = updates.hair_color_id;
                 cv.facial_hair.color.value        = colors.HairColor;
                 cv.facial_hair_color.value.color  = colors.HairColor;
+            }
+
+            cv.head_accessories ??= new List<WebIdValueColor>();
+            cv.head_accessories.Clear();
+            foreach (var accessory in updates.head_accessories)
+            {
+                cv.head_accessories.Add(new WebIdValueColor(accessory.remote_id, colors.HairColor));
             }
 
             cv.ornaments.Clear();

@@ -9,6 +9,7 @@ using RIN.Core.Common;
 using RIN.WebAPI.Utils;
 using RIN.Core.ClientApi;
 using RIN.Core;
+using RIN.Core.DB;
 using Microsoft.Net.Http.Headers;
 using RIN.Core.Models;
 using System.Data;
@@ -40,7 +41,65 @@ namespace RIN.WebAPI.Controllers
             resp.rb_balance       = accountMTX.rb_balance;
             resp.name_change_cost = accountMTX.name_change_cost;
 
+            await ApplyBattleframeVisuals(resp.characters);
+
             return resp;
+        }
+
+        private async Task ApplyBattleframeVisuals(List<Character> characters)
+        {
+            var withVisuals = characters.Where(c => c.visuals != null).ToList();
+            if (withVisuals.Count == 0)
+                return;
+
+            var sets = (await Db.GetBattleframeVisualSets(withVisuals.Select(c => c.character_guid).ToArray())).ToList();
+            var setsByCharacter = sets.GroupBy(s => s.character_guid).ToDictionary(g => g.Key, g => g.First());
+
+            var chassisIds = withVisuals
+                .Select(c => setsByCharacter.TryGetValue(c.character_guid, out var set) ? set.chassis_id : c.frame_sdb_id)
+                .Where(id => id != 0)
+                .Distinct()
+                .ToArray();
+
+            var frameDefaults = (await SDB.GetBattleframeDefaultPalettes(chassisIds))
+                .ToDictionary(d => (int) d.battleframe_sdb_id);
+
+            var parsedSets  = new Dictionary<long, List<LoadoutVisualEntry>>();
+            var paletteIds  = new HashSet<long>();
+
+            foreach (var set in sets)
+            {
+                var parsed = LoadoutVisuals.FromJson(set.visuals_json);
+                parsedSets[set.character_guid] = parsed;
+
+                foreach (var visual in parsed)
+                    if (visual.VisualType == LoadoutVisualEntry.TypePalette && visual.ItemSdbId != 0)
+                        paletteIds.Add(visual.ItemSdbId);
+            }
+
+            foreach (var defaults in frameDefaults.Values)
+            foreach (var paletteId in new[]
+                     {
+                         defaults.default_fullbody_palette_id, defaults.default_armor_palette_id,
+                         defaults.default_bodysuit_palette_id, defaults.default_glow_palette_id
+                     })
+                if (paletteId != 0)
+                    paletteIds.Add(paletteId);
+
+            var palettes = (await SDB.GetWarpaintPalettesInfo(paletteIds.Select(id => (int) id).ToArray()))
+                .ToDictionary(p => p.id);
+
+            foreach (var character in withVisuals)
+            {
+                setsByCharacter.TryGetValue(character.character_guid, out var set);
+                var chassisId = set != null ? set.chassis_id : character.frame_sdb_id;
+
+                frameDefaults.TryGetValue(chassisId, out var frameDefault);
+                parsedSets.TryGetValue(character.character_guid, out var parsed);
+
+                LoadoutVisuals.Build(parsed ?? new List<LoadoutVisualEntry>(), palettes, frameDefault)
+                            .ApplyTo(character.visuals);
+            }
         }
 
         [HttpPost("characters/{characterGuid}/undelete")]
@@ -235,7 +294,7 @@ namespace RIN.WebAPI.Controllers
                     warpaint = new List<uint>()
                         {4216738474, 0, 4216717312, 418250752, 1525350400, 4162844703, 4162844703},
                     decalgradients    = new List<int>(),
-                    warpaint_patterns = new List<int>(),
+                    warpaint_patterns = new List<WebWarpaintPattern>(),
                     visual_overrides  = new List<int>()
                 },
                 gear = new List<GearSlot>()

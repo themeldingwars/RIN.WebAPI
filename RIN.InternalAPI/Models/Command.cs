@@ -27,6 +27,7 @@ namespace RIN.InternalAPI.Models
     [ProtoInclude(21, typeof(SaveLoadoutPerk))]
     [ProtoInclude(22, typeof(DeleteLoadoutPerk))]
     [ProtoInclude(23, typeof(SaveBattleframeBandwidth))]
+    [ProtoInclude(24, typeof(SaveLoadoutVisuals))]
     public abstract class Command;
 
     [ProtoContract]
@@ -93,6 +94,7 @@ namespace RIN.InternalAPI.Models
         [ProtoMember(3)] public List<InventoryResourceData> Resources { get; set; } = new();
         [ProtoMember(4)] public List<InventoryLoadoutData> Loadouts { get; set; } = new();
         [ProtoMember(5)] public List<InventoryLoadoutSlotData> Slots { get; set; } = new();
+        [ProtoMember(6)] public List<InventoryLoadoutVisualData> Visuals { get; set; } = new();
     }
 
     [ProtoContract]
@@ -137,6 +139,27 @@ namespace RIN.InternalAPI.Models
         [ProtoMember(2)] public uint ConfigId { get; set; }
         [ProtoMember(3)] public uint SlotIndex { get; set; }
         [ProtoMember(4)] public long ItemGuid { get; set; }
+    }
+
+    [ProtoContract]
+    public class LoadoutVisual
+    {
+        [ProtoMember(1)] public uint VisualType { get; set; }
+        [ProtoMember(2)] public uint ItemSdbId { get; set; }
+        [ProtoMember(3)] public uint Data1 { get; set; }
+        [ProtoMember(4)] public uint Data2 { get; set; }
+
+        // Pattern: 4 floats (rotation in degrees, scale, horizontal offset, vertical offset).
+        // Decal: 12 floats (row major 3x3 rotation and scale, then translation in metres). Empty otherwise.
+        [ProtoMember(5)] public List<float> Transform { get; set; } = new();
+    }
+
+    [ProtoContract]
+    public class InventoryLoadoutVisualData
+    {
+        [ProtoMember(1)] public int LoadoutId { get; set; }
+        [ProtoMember(2)] public uint ConfigId { get; set; }
+        [ProtoMember(3)] public List<LoadoutVisual> Visuals { get; set; } = new();
     }
 
     [ProtoContract]
@@ -267,5 +290,17 @@ namespace RIN.InternalAPI.Models
         [ProtoMember(1)] public ulong CharacterGuid { get; set; }
         [ProtoMember(2)] public uint BattleframeSdbId { get; set; }
         [ProtoMember(3)] public uint Bandwidth { get; set; }
+    }
+
+    [ProtoContract]
+    public class SaveLoadoutVisuals : Command
+    {
+        [ProtoMember(1)] public ulong CharacterGuid { get; set; }
+        [ProtoMember(2)] public int LoadoutId { get; set; }
+
+        // 0 PvE, 1 PvP - the same numbering SaveLoadoutSlot uses.
+        [ProtoMember(3)] public uint ConfigId { get; set; }
+
+        [ProtoMember(4)] public List<LoadoutVisual> Visuals { get; set; } = new();
     }
 }

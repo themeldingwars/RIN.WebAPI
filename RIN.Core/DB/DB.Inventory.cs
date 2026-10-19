@@ -1,12 +1,14 @@
 using Dapper;
+using Microsoft.Extensions.Logging;
 using RIN.Core.Common;
+using RIN.Core.Utils;
 using System.Linq;
 
 namespace RIN.Core.DB
 {
     public partial class DB
     {
-        public async Task<(List<InventoryItemRow> items, List<InventoryResourceRow> resources, List<InventoryLoadoutRow> loadouts, List<InventoryLoadoutSlotRow> slots, List<InventoryLoadoutPerkRow> perks)> GetCharacterInventory(long charGuid)
+        public async Task<(List<InventoryItemRow> items, List<InventoryResourceRow> resources, List<InventoryLoadoutRow> loadouts, List<InventoryLoadoutSlotRow> slots, List<InventoryLoadoutPerkRow> perks, List<InventoryLoadoutVisualRow> visuals)> GetCharacterInventory(long charGuid)
         {
             const string SQL = @"
                 SELECT item_guid, sdb_id, sub_inventory, dynamic_flags, durability
@@ -34,6 +36,11 @@ namespace RIN.Core.DB
                 SELECT k.loadout_id, k.perk_item_sdb_id, k.level
                 FROM webapi.""CharacterLoadoutPerks"" k
                 INNER JOIN webapi.""CharacterLoadouts"" l ON k.loadout_id = l.loadout_id
+                WHERE l.character_guid = @charGuid;
+
+                SELECT v.loadout_id, v.config_id, v.visuals::text AS visuals_json
+                FROM webapi.""CharacterLoadoutVisuals"" v
+                INNER JOIN webapi.""CharacterLoadouts"" l ON v.loadout_id = l.loadout_id
                 WHERE l.character_guid = @charGuid;";
 
             var result = await DBCall(async conn =>
@@ -45,6 +52,7 @@ namespace RIN.Core.DB
                 var loadouts = (await multi.ReadAsync<InventoryLoadoutRow>()).ToList();
                 var slots = (await multi.ReadAsync<InventoryLoadoutSlotRow>()).ToList();
                 var perks = (await multi.ReadAsync<InventoryLoadoutPerkRow>()).ToList();
+                var visuals = (await multi.ReadAsync<InventoryLoadoutVisualRow>()).ToList();
 
                 var modulesByItem = itemModules.GroupBy(m => m.item_guid).ToDictionary(g => g.Key, g => g.ToList());
                 var slottedItems  = new HashSet<long>(slots.Select(s => s.item_guid));
@@ -59,10 +67,82 @@ namespace RIN.Core.DB
                         item.dynamic_flags |= (short) ItemDynamicFlags.IsEquipped;
                 }
 
-                return (items, resources, loadouts, slots, perks);
+                foreach (var visual in visuals)
+                    visual.visuals = LoadoutVisuals.FromJson(visual.visuals_json);
+
+                return (items, resources, loadouts, slots, perks, visuals);
             });
 
             return result;
+        }
+
+        public async Task<IEnumerable<CharacterBattleframeVisualRow>> GetBattleframeVisualSets(long[] characterGuids)
+        {
+            if (characterGuids == null || characterGuids.Length == 0)
+                return new List<CharacterBattleframeVisualRow>();
+
+            const string SELECT_SQL = @"
+                SELECT DISTINCT ON (l.character_guid)
+                       l.character_guid,
+                       l.loadout_id,
+                       l.chassis_id,
+                       coalesce(v.visuals, '[]'::jsonb)::text AS visuals_json
+                FROM webapi.""CharacterLoadouts"" l
+                JOIN webapi.""Characters"" c ON c.character_guid = l.character_guid
+                JOIN webapi.""Battleframes"" bf ON bf.id = c.current_battleframe_guid
+                LEFT JOIN webapi.""CharacterLoadoutVisuals"" v ON v.loadout_id = l.loadout_id AND v.config_id = 0
+                WHERE l.character_guid = ANY(@characterGuids)
+                  AND l.chassis_id = bf.battleframe_sdb_id
+                ORDER BY l.character_guid, l.loadout_id";
+
+            return await DBCall(async conn => await conn.QueryAsync<CharacterBattleframeVisualRow>(SELECT_SQL, new { characterGuids }));
+        }
+
+        /// <summary>
+        /// Replaces the whole visual set of one loadout config. An empty set deletes the row.
+        ///
+        /// The set is stored exactly as it arrived so the full set needs to be sent on every change, the clients own the data, we just store it.
+        ///
+        /// The one exception: an entry carrying a NaN or infinite transform cannot be written as JSON at all, so
+        /// it is dropped and logged rather than taking the whole write down with it. If that leaves nothing, the
+        /// row is deleted like any other empty set.
+        /// </summary>
+        public async Task<bool> SaveLoadoutVisuals(long characterGuid, int loadoutId, short configId, List<LoadoutVisualEntry> visuals)
+        {
+            var stored = LoadoutVisuals.ToJson(visuals, out var droppedEntries);
+            var kept   = (visuals?.Count ?? 0) - droppedEntries;
+
+            if (droppedEntries > 0)
+                Logger.LogWarning("SaveLoadoutVisuals: dropped {droppedEntries} of {totalEntries} visual entries with a non-finite transform, character {characterGuid} loadout {loadoutId} config {configId}",
+                    droppedEntries, visuals?.Count ?? 0, characterGuid, loadoutId, configId);
+
+            return await DBCall(async conn =>
+            {
+                if (kept <= 0)
+                {
+                    await conn.ExecuteAsync(@"DELETE FROM webapi.""CharacterLoadoutVisuals"" v
+                                              USING webapi.""CharacterLoadouts"" l
+                                              WHERE v.loadout_id = l.loadout_id
+                                                AND l.character_guid = @characterGuid
+                                                AND v.loadout_id = @loadoutId
+                                                AND v.config_id = @configId",
+                        new { characterGuid, loadoutId, configId });
+                    return true;
+                }
+
+                const string UPSERT_SQL = @"INSERT INTO webapi.""CharacterLoadoutVisuals"" (loadout_id, config_id, visuals)
+                                            SELECT @loadoutId, @configId, @visuals::jsonb
+                                            WHERE EXISTS (SELECT 1
+                                                          FROM webapi.""CharacterLoadouts""
+                                                          WHERE loadout_id = @loadoutId
+                                                            AND character_guid = @characterGuid)
+                                            ON CONFLICT (loadout_id, config_id)
+                                            DO UPDATE SET visuals = EXCLUDED.visuals";
+
+                var affected = await conn.ExecuteAsync(UPSERT_SQL,
+                    new { loadoutId, configId, characterGuid, visuals = stored });
+                return affected > 0;
+            });
         }
 
         /// <summary>
@@ -238,7 +318,7 @@ namespace RIN.Core.DB
             return affected > 0;
         }
 
-    public async Task<bool> SeedCharacterInventory(long characterGuid, List<InventorySeedItem> items, List<InventorySeedResource> resources, List<InventorySeedLoadout> loadouts, List<InventorySeedLoadoutSlot> slots)
+    public async Task<bool> SeedCharacterInventory(long characterGuid, List<InventorySeedItem> items, List<InventorySeedResource> resources, List<InventorySeedLoadout> loadouts, List<InventorySeedLoadoutSlot> slots, List<InventorySeedLoadoutVisual> visuals)
         {
             return await DBCall(async conn =>
             {
@@ -294,6 +374,33 @@ namespace RIN.Core.DB
                                                   VALUES (@loadoutId, @configId, @slotIndex, @itemGuid)
                                                   ON CONFLICT (loadout_id, config_id, slot_index) DO NOTHING",
                             new { slot.LoadoutId, slot.ConfigId, slot.SlotIndex, slot.ItemGuid }, tx);
+                    }
+                }
+
+                if (visuals != null && visuals.Any())
+                {
+                    foreach (var visual in visuals)
+                    {
+                        if (visual.Visuals == null || !visual.Visuals.Any())
+                            continue;
+
+                        var stored = LoadoutVisuals.ToJson(visual.Visuals, out var droppedEntries);
+
+                        if (visual.Visuals.Count - droppedEntries <= 0)
+                        {
+                            Logger.LogWarning("SeedCharacterInventory: all {totalEntries} visual entries for loadout {loadoutId} config {configId} of character {characterGuid} carry a non-finite transform, nothing stored",
+                                visual.Visuals.Count, visual.LoadoutId, visual.ConfigId, characterGuid);
+                            continue;
+                        }
+
+                        if (droppedEntries > 0)
+                            Logger.LogWarning("SeedCharacterInventory: dropped {droppedEntries} of {totalEntries} visual entries with a non-finite transform, loadout {loadoutId} config {configId} of character {characterGuid}",
+                                droppedEntries, visual.Visuals.Count, visual.LoadoutId, visual.ConfigId, characterGuid);
+
+                        await conn.ExecuteAsync(@"INSERT INTO webapi.""CharacterLoadoutVisuals"" (loadout_id, config_id, visuals)
+                                                  VALUES (@loadoutId, @configId, @visuals::jsonb)
+                                                  ON CONFLICT (loadout_id, config_id) DO NOTHING",
+                            new { visual.LoadoutId, visual.ConfigId, visuals = stored }, tx);
                     }
                 }
 
@@ -488,6 +595,29 @@ namespace RIN.Core.DB
         public long item_guid { get; set; }
     }
 
+    public class InventoryLoadoutVisualRow
+    {
+        public int loadout_id { get; set; }
+        public short config_id { get; set; }
+        public string visuals_json { get; set; } = string.Empty;
+        public List<LoadoutVisualEntry> visuals { get; set; } = new();
+    }
+
+    public class CharacterBattleframeVisualRow
+    {
+        public long character_guid { get; set; }
+        public int loadout_id { get; set; }
+        public int chassis_id { get; set; }
+        public string visuals_json { get; set; } = string.Empty;
+    }
+
+    public class InventorySeedLoadoutVisual
+    {
+        public int LoadoutId { get; set; }
+        public short ConfigId { get; set; }
+        public List<LoadoutVisualEntry> Visuals { get; set; } = new();
+    }
+
     public class InventorySeedItem
     {
         public long ItemGuid { get; set; }
@@ -510,6 +640,7 @@ namespace RIN.Core.DB
         public int Quantity { get; set; }
         public short SubInventory { get; set; }
     }
+
     public class InventorySeedLoadout
     {
         public int LoadoutId { get; set; }
@@ -517,6 +648,7 @@ namespace RIN.Core.DB
         public string LoadoutName { get; set; } = string.Empty;
         public string LoadoutType { get; set; } = string.Empty;
     }
+
     public class InventorySeedLoadoutSlot
     {
         public int LoadoutId { get; set; }

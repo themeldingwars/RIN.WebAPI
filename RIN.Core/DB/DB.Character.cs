@@ -112,8 +112,7 @@ namespace RIN.Core.DB
                     character.visuals = new CharacterBattleframeCombinedVisuals();
                     charaterVisuals.ApplyToCharacterVisuals(character.visuals);
 
-                    var defaultBattleframeVisuals = PlayerBattleframeVisuals.CreateDefault();
-                    defaultBattleframeVisuals.ApplyToCharacterVisuals(character.visuals);
+                    // Battleframe visuals are added in ClientApiV2.ApplyBattleframeVisuals
                 }
 
                 chars.Add(character);

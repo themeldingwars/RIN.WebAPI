@@ -10,6 +10,7 @@ namespace RIN.InternalAPI.Models
         [ProtoMember(3)] public List<CharacterLoadout> Loadouts { get; set; } = new();
         [ProtoMember(4)] public List<CharacterLoadoutSlotEntry> Slots { get; set; } = new();
         [ProtoMember(5)] public List<CharacterLoadoutPerkEntry> LoadoutPerks { get; set; } = new();
+        [ProtoMember(6)] public List<CharacterLoadoutVisualsEntry> Visuals { get; set; } = new();
     }
 
     [ProtoContract]
@@ -62,5 +63,16 @@ namespace RIN.InternalAPI.Models
         [ProtoMember(2)] public uint ConfigId { get; set; }
         [ProtoMember(3)] public uint SlotIndex { get; set; }
         [ProtoMember(4)] public long ItemGuid { get; set; }
+    }
+
+    [ProtoContract]
+    public class CharacterLoadoutVisualsEntry
+    {
+        [ProtoMember(1)] public int LoadoutId { get; set; }
+
+        // 0 PvE, 1 PvP.
+        [ProtoMember(2)] public uint ConfigId { get; set; }
+
+        [ProtoMember(3)] public List<LoadoutVisual> Visuals { get; set; } = new();
     }
 }

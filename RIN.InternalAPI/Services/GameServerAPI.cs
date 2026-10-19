@@ -249,6 +249,18 @@ namespace RIN.InternalAPI.Services
                 });
             }
 
+            // Visual sets come back exactly as they were stored: same order, same floats. Any conversion for a
+            // game client or the web API belongs on the side that needs it, not here.
+            foreach (var set in dbInventory.visuals)
+            {
+                resp.Visuals.Add(new CharacterLoadoutVisualsEntry
+                {
+                    LoadoutId = set.loadout_id,
+                    ConfigId  = (uint)set.config_id,
+                    Visuals   = set.visuals.Select(ToWireVisual).ToList(),
+                });
+            }
+
             return resp;
         }
 
@@ -386,7 +398,13 @@ namespace RIN.InternalAPI.Services
                                 SlotIndex = (short)x.SlotIndex,
                                 ItemGuid = (long)x.ItemGuid
                             }).ToList() ?? new List<InventorySeedLoadoutSlot>();
-                            await Db.SeedCharacterInventory((long)seed.CharacterGuid, items, resources, loadouts, slots);
+                            var seedVisuals = seed.Visuals?.Select(x => new InventorySeedLoadoutVisual
+                            {
+                                LoadoutId = x.LoadoutId,
+                                ConfigId = (short)x.ConfigId,
+                                Visuals = x.Visuals?.Select(ToStoredVisual).ToList() ?? new List<LoadoutVisualEntry>()
+                            }).ToList() ?? new List<InventorySeedLoadoutVisual>();
+                            await Db.SeedCharacterInventory((long)seed.CharacterGuid, items, resources, loadouts, slots, seedVisuals);
                             await Db.NotifyInventoryUpdated((long)seed.CharacterGuid);
                             break;
                         case SeedCharacterFromTemplate seedTemplate:
@@ -474,6 +492,14 @@ namespace RIN.InternalAPI.Services
                         case SaveBattleframeBandwidth bandwidth:
                             await Db.UpdateBattleframeBandwidth((long)bandwidth.CharacterGuid, (int)bandwidth.BattleframeSdbId, (int)bandwidth.Bandwidth);
                             break;
+                        case SaveLoadoutVisuals visual:
+                            await Db.SaveLoadoutVisuals(
+                                (long)visual.CharacterGuid,
+                                visual.LoadoutId,
+                                (short)visual.ConfigId,
+                                visual.Visuals?.Select(ToStoredVisual).ToList() ?? new List<LoadoutVisualEntry>());
+                            await Db.NotifyInventoryUpdated((long)visual.CharacterGuid);
+                            break;
                     }
                 }
             }
@@ -486,6 +512,32 @@ namespace RIN.InternalAPI.Services
             {
                 channel.Writer.TryComplete();
             }
+        }
+
+        // The wire shape and the stored shape of a visual are the same fields; these two only move them across
+        // the assembly boundary. Nothing is converted, clamped or reordered in either direction.
+        private static LoadoutVisual ToWireVisual(LoadoutVisualEntry entry)
+        {
+            return new LoadoutVisual
+            {
+                VisualType = entry.VisualType,
+                ItemSdbId  = entry.ItemSdbId,
+                Data1      = entry.Data1,
+                Data2      = entry.Data2,
+                Transform  = entry.Transform ?? new List<float>()
+            };
+        }
+
+        private static LoadoutVisualEntry ToStoredVisual(LoadoutVisual visual)
+        {
+            return new LoadoutVisualEntry
+            {
+                VisualType = visual.VisualType,
+                ItemSdbId  = visual.ItemSdbId,
+                Data1      = visual.Data1,
+                Data2      = visual.Data2,
+                Transform  = visual.Transform ?? new List<float>()
+            };
         }
     }
 }

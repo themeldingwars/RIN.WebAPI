@@ -22,8 +22,11 @@ namespace RIN.Core.DB
             cVisuals.warpaint_id       = warpaint_id;
             cVisuals.warpaint          = warpaint;
             cVisuals.decalgradients    = decalgradients;
-            cVisuals.warpaint_patterns = warpaint_patterns;
             cVisuals.visual_overrides  = visual_overrides;
+
+            // warpaint_patterns is deliberately not copied. This blob holds it as a list of ids, which cannot
+            // carry a pattern's transform or its chassis region, so the web API's pattern list is built from
+            // webapi."CharacterLoadoutVisuals" instead - see LoadoutVisuals.Build.
         }
         
         public static PlayerBattleframeVisuals CreateDefault()

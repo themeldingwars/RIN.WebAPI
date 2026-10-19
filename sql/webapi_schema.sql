@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict BTbasBS3VXkGFnU2xx53bKM25c9zv0oK9FdpuVbGmQap1NLDI6d5nTkc8gviWmv
+\restrict N7OGRyLAdxVzFG66ABehchkL2arOqZy6F4DaRx1V9c00zB1QCG25qnzkRwn7hpM
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -968,6 +968,13 @@ BEGIN
     FROM webapi."NewCharacterTemplateLoadoutPerks" p
     JOIN _seed_loadout_map lm USING (template_id, template_loadout_id);
 
+    -- The set is copied whole, jsonb and all: order and float values are the data, and re-shaping either
+    -- here would change what the player sees.
+    INSERT INTO webapi."CharacterLoadoutVisuals" (loadout_id, config_id, visuals)
+    SELECT lm.loadout_id, v.config_id, v.visuals
+    FROM webapi."NewCharacterTemplateLoadoutVisuals" v
+    JOIN _seed_loadout_map lm USING (template_id, template_loadout_id);
+
     -- One progression row per chassis. Frames the character already has keep their progression.
     INSERT INTO webapi."Battleframes" (id,
                                        character_guid,
@@ -1016,6 +1023,7 @@ BEGIN
         RAISE EXCEPTION 'snapshot_inventory_as_template: no template %', p_template_id;
     END IF;
 
+    DELETE FROM webapi."NewCharacterTemplateLoadoutVisuals" WHERE template_id = p_template_id;
     DELETE FROM webapi."NewCharacterTemplateLoadoutPerks"  WHERE template_id = p_template_id;
     DELETE FROM webapi."NewCharacterTemplateLoadoutSlots" WHERE template_id = p_template_id;
     DELETE FROM webapi."NewCharacterTemplateItemModules"  WHERE template_id = p_template_id;
@@ -1059,6 +1067,12 @@ BEGIN
     INSERT INTO webapi."NewCharacterTemplateLoadoutPerks" (template_id, template_loadout_id, perk_item_sdb_id, level)
     SELECT p_template_id, lm.template_loadout_id, k.perk_item_sdb_id, k.level
     FROM webapi."CharacterLoadoutPerks" k
+    JOIN (SELECT loadout_id, row_number() OVER (ORDER BY loadout_id) AS template_loadout_id
+          FROM webapi."CharacterLoadouts" WHERE character_guid = char_guid) lm USING (loadout_id);
+
+    INSERT INTO webapi."NewCharacterTemplateLoadoutVisuals" (template_id, template_loadout_id, config_id, visuals)
+    SELECT p_template_id, lm.template_loadout_id, v.config_id, v.visuals
+    FROM webapi."CharacterLoadoutVisuals" v
     JOIN (SELECT loadout_id, row_number() OVER (ORDER BY loadout_id) AS template_loadout_id
           FROM webapi."CharacterLoadouts" WHERE character_guid = char_guid) lm USING (loadout_id);
 
@@ -1462,6 +1476,56 @@ ALTER TABLE webapi."CharacterLoadoutSlots" ALTER COLUMN id ADD GENERATED ALWAYS 
 
 
 --
+-- Name: CharacterLoadoutVisuals; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."CharacterLoadoutVisuals" (
+    id bigint NOT NULL,
+    loadout_id integer NOT NULL,
+    config_id smallint DEFAULT 0 NOT NULL,
+    visuals jsonb DEFAULT '[]'::jsonb NOT NULL,
+    CONSTRAINT "CharacterLoadoutVisuals_visuals_is_array" CHECK ((jsonb_typeof(visuals) = 'array'::text))
+);
+
+
+ALTER TABLE webapi."CharacterLoadoutVisuals" OWNER TO tmwadmin;
+
+--
+-- Name: TABLE "CharacterLoadoutVisuals"; Type: COMMENT; Schema: webapi; Owner: tmwadmin
+--
+
+COMMENT ON TABLE webapi."CharacterLoadoutVisuals" IS 'The whole visual set of one loadout config: palettes, patterns, decals, glider, vehicle. PIN owns the set and sends it whole; RIN stores it verbatim and validates nothing about it.';
+
+
+--
+-- Name: COLUMN "CharacterLoadoutVisuals".config_id; Type: COMMENT; Schema: webapi; Owner: tmwadmin
+--
+
+COMMENT ON COLUMN webapi."CharacterLoadoutVisuals".config_id IS '0 PvE, 1 PvP. Same numbering as CharacterLoadoutSlots.config_id. An absent row means the config has no visuals and the battleframe falls back to its dbitems::Battleframe defaults.';
+
+
+--
+-- Name: COLUMN "CharacterLoadoutVisuals".visuals; Type: COMMENT; Schema: webapi; Owner: tmwadmin
+--
+
+COMMENT ON COLUMN webapi."CharacterLoadoutVisuals".visuals IS 'Ordered JSON array of {visualType, itemSdbId, data1, data2, transform}. visualType 9 palette, 10 pattern, 11 decal, 13 glider, 14 vehicle. Pattern transform is 4 floats (degrees, scale, h offset, v offset), decal transform is 12 (3x3 rotation+scale row major, then translation). Stored as the client sent them: no rounding, no clamping, no reordering.';
+
+
+--
+-- Name: CharacterLoadoutVisuals_id_seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE webapi."CharacterLoadoutVisuals" ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME webapi."CharacterLoadoutVisuals_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: LoadoutId_Seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
 --
 
@@ -1802,6 +1866,28 @@ CREATE TABLE webapi."NewCharacterTemplateLoadoutSlots" (
 
 
 ALTER TABLE webapi."NewCharacterTemplateLoadoutSlots" OWNER TO tmwadmin;
+
+--
+-- Name: NewCharacterTemplateLoadoutVisuals; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."NewCharacterTemplateLoadoutVisuals" (
+    template_id integer NOT NULL,
+    template_loadout_id integer NOT NULL,
+    config_id smallint DEFAULT 0 NOT NULL,
+    visuals jsonb DEFAULT '[]'::jsonb NOT NULL,
+    CONSTRAINT "NewCharacterTemplateLoadoutVisuals_visuals_is_array" CHECK ((jsonb_typeof(visuals) = 'array'::text))
+);
+
+
+ALTER TABLE webapi."NewCharacterTemplateLoadoutVisuals" OWNER TO tmwadmin;
+
+--
+-- Name: TABLE "NewCharacterTemplateLoadoutVisuals"; Type: COMMENT; Schema: webapi; Owner: tmwadmin
+--
+
+COMMENT ON TABLE webapi."NewCharacterTemplateLoadoutVisuals" IS 'Visual sets a seeded character starts with. snapshot_inventory_as_template carries them; build_template_from_char_create cannot, because sdb dbcharacter::CharCreateLoadout has no warpaint columns.';
+
 
 --
 -- Name: NewCharacterTemplateLoadouts; Type: TABLE; Schema: webapi; Owner: tmwadmin
@@ -2169,6 +2255,22 @@ ALTER TABLE ONLY webapi."CharacterLoadoutSlots"
 
 
 --
+-- Name: CharacterLoadoutVisuals CharacterLoadoutVisuals_loadout_config_key; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterLoadoutVisuals"
+    ADD CONSTRAINT "CharacterLoadoutVisuals_loadout_config_key" UNIQUE (loadout_id, config_id);
+
+
+--
+-- Name: CharacterLoadoutVisuals CharacterLoadoutVisuals_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterLoadoutVisuals"
+    ADD CONSTRAINT "CharacterLoadoutVisuals_pkey" PRIMARY KEY (id);
+
+
+--
 -- Name: CharacterLoadouts CharacterLoadouts_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -2278,6 +2380,14 @@ ALTER TABLE ONLY webapi."NewCharacterTemplateLoadoutPerks"
 
 ALTER TABLE ONLY webapi."NewCharacterTemplateLoadoutSlots"
     ADD CONSTRAINT "NewCharacterTemplateLoadoutSlots_pkey" PRIMARY KEY (template_id, template_loadout_id, config_id, slot_index);
+
+
+--
+-- Name: NewCharacterTemplateLoadoutVisuals NewCharacterTemplateLoadoutVisuals_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."NewCharacterTemplateLoadoutVisuals"
+    ADD CONSTRAINT "NewCharacterTemplateLoadoutVisuals_pkey" PRIMARY KEY (template_id, template_loadout_id, config_id);
 
 
 --
@@ -2633,6 +2743,14 @@ ALTER TABLE ONLY webapi."CharacterLoadoutPerks"
 
 
 --
+-- Name: CharacterLoadoutVisuals CharacterLoadoutVisuals_loadout_id_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterLoadoutVisuals"
+    ADD CONSTRAINT "CharacterLoadoutVisuals_loadout_id_fkey" FOREIGN KEY (loadout_id) REFERENCES webapi."CharacterLoadouts"(loadout_id) ON DELETE CASCADE;
+
+
+--
 -- Name: LeaderboardEntries LeaderboardEntries_character_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -2785,6 +2903,14 @@ ALTER TABLE ONLY webapi."NewCharacterTemplateLoadoutSlots"
 
 
 --
+-- Name: NewCharacterTemplateLoadoutVisuals template_loadout_visuals_loadout_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."NewCharacterTemplateLoadoutVisuals"
+    ADD CONSTRAINT template_loadout_visuals_loadout_fkey FOREIGN KEY (template_id, template_loadout_id) REFERENCES webapi."NewCharacterTemplateLoadouts"(template_id, template_loadout_id) ON DELETE CASCADE;
+
+
+--
 -- Name: NewCharacterTemplateLoadouts template_loadouts_template_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -2812,5 +2938,5 @@ ALTER TABLE ONLY webapi."VipData"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict BTbasBS3VXkGFnU2xx53bKM25c9zv0oK9FdpuVbGmQap1NLDI6d5nTkc8gviWmv
+\unrestrict N7OGRyLAdxVzFG66ABehchkL2arOqZy6F4DaRx1V9c00zB1QCG25qnzkRwn7hpM
 

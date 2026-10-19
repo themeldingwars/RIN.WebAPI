@@ -28,8 +28,8 @@ namespace RIN.Core.ClientApi
         [ProtoMember(18)] public List<WebDecal>        decals            { get; set; }
         [ProtoMember(19)] public int                   warpaint_id       { get; set; }
         [ProtoMember(20)] public List<uint>            warpaint          { get; set; }
-        [ProtoMember(21)] public List<int>             decalgradients    { get; set; }
-        [ProtoMember(22)] public List<int>             warpaint_patterns { get; set; }
-        [ProtoMember(23)] public List<int>             visual_overrides  { get; set; }
+        [ProtoMember(21)] public List<int>                decalgradients    { get; set; }
+        [ProtoMember(22)] public List<WebWarpaintPattern> warpaint_patterns { get; set; }
+        [ProtoMember(23)] public List<int>                visual_overrides  { get; set; }
     }
 }

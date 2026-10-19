@@ -1,17 +1,9 @@
-﻿using System;
-using System.IO;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Components.Web;
+﻿using System.Text;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RIN.Core;
 using RIN.WebAPI.Models;
-using RIN.WebAPI.Models.Config;
 using RIN.WebAPI.Models.Operator;
-using Serilog;
 
 namespace RIN.WebAPI.Controllers
 {
@@ -28,7 +20,7 @@ namespace RIN.WebAPI.Controllers
             Logger        = logger;
             WebConfig     = webConfig.Value;
         }
-        
+
         [HttpGet("/api/v1/products/Firefall_Beta")]
         public async Task<BuildInfo> BuildInfo()
         {
@@ -39,10 +31,10 @@ namespace RIN.WebAPI.Controllers
                 region      = "EU",
                 patch_level = 0
             };
-            
+
             return buildInfo;
         }
-        
+
         [HttpGet]
         [Route("/check")]
         public async Task<Hosts> Check([FromQuery] CheckReq args)
@@ -84,14 +76,15 @@ namespace RIN.WebAPI.Controllers
 
             return message;
         }
-        
+
         // Log unhandled requests to look into adding later
         [HttpGet("*")]
         [HttpPost("*")]
         public async Task<Error> CatchAll()
         {
-            var baseDir = Path.Combine(Environment.CurrentDirectory, "../", "UnhandledRoutes");
-            var dir     = baseDir + Request.Path.Value?.Replace('/', '\\');
+            var baseDir = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, "..", "UnhandledRoutes"));
+            var pathSegments = (Request.Path.Value ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var dir = pathSegments.Aggregate(baseDir, Path.Combine);
             Directory.CreateDirectory(dir);
 
             var filePath = Path.Combine(dir, $"{DateTime.Now.ToFileTime()}.txt");
@@ -107,7 +100,7 @@ namespace RIN.WebAPI.Controllers
             foreach (var kvp in Request.Headers) {
                 sb.AppendLine($"{kvp.Key}: {kvp.Value}");
             }
-            
+
             // Body
             using (var reader = new StreamReader(Request.Body)) {
                 var body = await reader.ReadToEndAsync();
