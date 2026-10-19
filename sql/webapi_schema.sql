@@ -281,6 +281,8 @@ BEGIN
             visuals)
     RETURNING character_guid INTO new_character_id;
 
+    PERFORM webapi.seed_character_inventory(new_character_id);
+
     error_text = '';
 
 END
@@ -739,6 +741,113 @@ $$;
 
 ALTER FUNCTION webapi.notify_on_unlock_events() OWNER TO tmwadmin;
 
+--
+-- Name: seed_character_inventory(bigint); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+-- Copies the new-character template into a character's inventory, generating
+-- fresh item guids and loadout ids. No-op if the character already has items
+-- or the template is empty.
+--
+
+CREATE FUNCTION webapi.seed_character_inventory(char_guid bigint) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM webapi."CharacterItems" WHERE character_guid = char_guid) THEN
+        RETURN;
+    END IF;
+
+    DROP TABLE IF EXISTS _seed_item_map;
+    DROP TABLE IF EXISTS _seed_loadout_map;
+
+    CREATE TEMPORARY TABLE _seed_item_map ON COMMIT DROP AS
+    SELECT t.template_item_id, webapi.create_entity_guid(253) AS item_guid
+    FROM webapi."NewCharacterTemplateItems" t;
+
+    INSERT INTO webapi."CharacterItems" (item_guid, character_guid, sdb_id, sub_inventory, dynamic_flags, durability)
+    SELECT m.item_guid, char_guid, t.sdb_id, t.sub_inventory, t.dynamic_flags, t.durability
+    FROM webapi."NewCharacterTemplateItems" t
+    JOIN _seed_item_map m USING (template_item_id);
+
+    INSERT INTO webapi."CharacterItemModules" (item_guid, slot_index, module_sdb_id)
+    SELECT m.item_guid, tm.slot_index, tm.module_sdb_id
+    FROM webapi."NewCharacterTemplateItemModules" tm
+    JOIN _seed_item_map m USING (template_item_id);
+
+    INSERT INTO webapi."CharacterResources" (character_guid, sdb_id, quantity, sub_inventory)
+    SELECT char_guid, sdb_id, quantity, sub_inventory
+    FROM webapi."NewCharacterTemplateResources";
+
+    CREATE TEMPORARY TABLE _seed_loadout_map ON COMMIT DROP AS
+    SELECT t.template_loadout_id, nextval('webapi."LoadoutId_Seq"')::integer AS loadout_id
+    FROM webapi."NewCharacterTemplateLoadouts" t;
+
+    INSERT INTO webapi."CharacterLoadouts" (loadout_id, character_guid, chassis_id, loadout_name, loadout_type)
+    SELECT lm.loadout_id, char_guid, t.chassis_id, t.loadout_name, t.loadout_type
+    FROM webapi."NewCharacterTemplateLoadouts" t
+    JOIN _seed_loadout_map lm USING (template_loadout_id);
+
+    INSERT INTO webapi."CharacterLoadoutSlots" (loadout_id, config_id, slot_index, item_guid)
+    SELECT lm.loadout_id, s.config_id, s.slot_index, im.item_guid
+    FROM webapi."NewCharacterTemplateLoadoutSlots" s
+    JOIN _seed_loadout_map lm USING (template_loadout_id)
+    JOIN _seed_item_map im USING (template_item_id);
+END
+$$;
+
+
+ALTER FUNCTION webapi.seed_character_inventory(char_guid bigint) OWNER TO tmwadmin;
+
+--
+-- Name: snapshot_inventory_as_template(bigint); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+-- Dev utility: replaces the new-character template with a snapshot of the
+-- given character's inventory. Run against a freshly seeded, never-played
+-- character only.
+--
+
+CREATE FUNCTION webapi.snapshot_inventory_as_template(char_guid bigint) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    DELETE FROM webapi."NewCharacterTemplateLoadoutSlots";
+    DELETE FROM webapi."NewCharacterTemplateItemModules";
+    DELETE FROM webapi."NewCharacterTemplateLoadouts";
+    DELETE FROM webapi."NewCharacterTemplateResources";
+    DELETE FROM webapi."NewCharacterTemplateItems";
+
+    INSERT INTO webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory, dynamic_flags, durability)
+    SELECT row_number() OVER (ORDER BY item_guid), sdb_id, sub_inventory, dynamic_flags, durability
+    FROM webapi."CharacterItems"
+    WHERE character_guid = char_guid;
+
+    INSERT INTO webapi."NewCharacterTemplateItemModules" (template_item_id, slot_index, module_sdb_id)
+    SELECT im.template_item_id, m.slot_index, m.module_sdb_id
+    FROM webapi."CharacterItemModules" m
+    JOIN (SELECT item_guid, row_number() OVER (ORDER BY item_guid) AS template_item_id
+          FROM webapi."CharacterItems" WHERE character_guid = char_guid) im USING (item_guid);
+
+    INSERT INTO webapi."NewCharacterTemplateResources" (sdb_id, quantity, sub_inventory)
+    SELECT sdb_id, quantity, sub_inventory
+    FROM webapi."CharacterResources"
+    WHERE character_guid = char_guid;
+
+    INSERT INTO webapi."NewCharacterTemplateLoadouts" (template_loadout_id, chassis_id, loadout_name, loadout_type)
+    SELECT row_number() OVER (ORDER BY loadout_id), chassis_id, loadout_name, loadout_type
+    FROM webapi."CharacterLoadouts"
+    WHERE character_guid = char_guid;
+
+    INSERT INTO webapi."NewCharacterTemplateLoadoutSlots" (template_loadout_id, config_id, slot_index, template_item_id)
+    SELECT lm.template_loadout_id, s.config_id, s.slot_index, im.template_item_id
+    FROM webapi."CharacterLoadoutSlots" s
+    JOIN (SELECT loadout_id, row_number() OVER (ORDER BY loadout_id) AS template_loadout_id
+          FROM webapi."CharacterLoadouts" WHERE character_guid = char_guid) lm USING (loadout_id)
+    JOIN (SELECT item_guid, row_number() OVER (ORDER BY item_guid) AS template_item_id
+          FROM webapi."CharacterItems" WHERE character_guid = char_guid) im USING (item_guid);
+END
+$$;
+
+
+ALTER FUNCTION webapi.snapshot_inventory_as_template(char_guid bigint) OWNER TO tmwadmin;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -1106,6 +1215,77 @@ CREATE TABLE webapi."CharacterLoadoutSlots" (
 
 
 ALTER TABLE webapi."CharacterLoadoutSlots" OWNER TO tmwadmin;
+
+--
+-- Name: NewCharacterTemplateItems; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."NewCharacterTemplateItems" (
+    template_item_id integer PRIMARY KEY,
+    sdb_id integer NOT NULL,
+    sub_inventory smallint NOT NULL DEFAULT 1,
+    dynamic_flags smallint NOT NULL DEFAULT 0,
+    durability integer NOT NULL DEFAULT 1000
+);
+
+
+ALTER TABLE webapi."NewCharacterTemplateItems" OWNER TO tmwadmin;
+
+--
+-- Name: NewCharacterTemplateItemModules; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."NewCharacterTemplateItemModules" (
+    template_item_id integer NOT NULL,
+    slot_index smallint NOT NULL,
+    module_sdb_id integer NOT NULL,
+    PRIMARY KEY (template_item_id, slot_index)
+);
+
+
+ALTER TABLE webapi."NewCharacterTemplateItemModules" OWNER TO tmwadmin;
+
+--
+-- Name: NewCharacterTemplateResources; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."NewCharacterTemplateResources" (
+    sdb_id integer PRIMARY KEY,
+    quantity integer NOT NULL DEFAULT 0,
+    sub_inventory smallint NOT NULL DEFAULT 1
+);
+
+
+ALTER TABLE webapi."NewCharacterTemplateResources" OWNER TO tmwadmin;
+
+--
+-- Name: NewCharacterTemplateLoadouts; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."NewCharacterTemplateLoadouts" (
+    template_loadout_id integer PRIMARY KEY,
+    chassis_id integer NOT NULL,
+    loadout_name text NOT NULL DEFAULT 'Loadout',
+    loadout_type text NOT NULL DEFAULT 'battleframe'
+);
+
+
+ALTER TABLE webapi."NewCharacterTemplateLoadouts" OWNER TO tmwadmin;
+
+--
+-- Name: NewCharacterTemplateLoadoutSlots; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."NewCharacterTemplateLoadoutSlots" (
+    template_loadout_id integer NOT NULL,
+    config_id smallint NOT NULL DEFAULT 0,
+    slot_index smallint NOT NULL,
+    template_item_id integer NOT NULL,
+    PRIMARY KEY (template_loadout_id, config_id, slot_index)
+);
+
+
+ALTER TABLE webapi."NewCharacterTemplateLoadoutSlots" OWNER TO tmwadmin;
 
 --
 -- Name: ClientEvents; Type: TABLE; Schema: webapi; Owner: tmwadmin
@@ -1876,11 +2056,36 @@ ALTER TABLE ONLY webapi."CharacterLoadoutSlots"
 
 
 --
+--
 -- Name: CharacterItemModules character_item_modules_item_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
 ALTER TABLE ONLY webapi."CharacterItemModules"
     ADD CONSTRAINT character_item_modules_item_guid_fkey FOREIGN KEY (item_guid) REFERENCES webapi."CharacterItems"(item_guid) ON DELETE CASCADE;
+
+
+--
+-- Name: NewCharacterTemplateLoadoutSlots template_loadout_slots_loadout_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."NewCharacterTemplateLoadoutSlots"
+    ADD CONSTRAINT template_loadout_slots_loadout_fkey FOREIGN KEY (template_loadout_id) REFERENCES webapi."NewCharacterTemplateLoadouts"(template_loadout_id) ON DELETE CASCADE;
+
+
+--
+-- Name: NewCharacterTemplateLoadoutSlots template_loadout_slots_item_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."NewCharacterTemplateLoadoutSlots"
+    ADD CONSTRAINT template_loadout_slots_item_fkey FOREIGN KEY (template_item_id) REFERENCES webapi."NewCharacterTemplateItems"(template_item_id) ON DELETE CASCADE;
+
+
+--
+-- Name: NewCharacterTemplateItemModules template_item_modules_item_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."NewCharacterTemplateItemModules"
+    ADD CONSTRAINT template_item_modules_item_fkey FOREIGN KEY (template_item_id) REFERENCES webapi."NewCharacterTemplateItems"(template_item_id) ON DELETE CASCADE;
 
 
 --
