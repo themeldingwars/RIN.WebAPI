@@ -48,15 +48,15 @@ namespace RIN.WebAPI.Controllers
         public async Task<object> Undelete(long characterGuid)
         {
             var loginResult = await Db.GetLoginData(GetUid());
-            var restore_result = Db.UndeleteCharacterById(loginResult.account_id, characterGuid);
+            var restore_result = await Db.UndeleteCharacterById(loginResult.account_id, characterGuid);
 
-            if (restore_result.Result.code == Error.Codes.SUCCESS)
+            if (restore_result.code == Error.Codes.SUCCESS)
             {
                 return true;
             }
             else
             {
-                return ReturnError(restore_result.Result, 404);
+                return ReturnError(restore_result, 404);
             }
         }
 

@@ -47,10 +47,10 @@ namespace RIN.WebAPI.Controllers
                     );
             }
 
-            var armyGuid = Db.CreateArmy(GetCid(), req.name, req.website, req.description,
+            var armyGuid = await Db.CreateArmy(GetCid(), req.name, req.website, req.description,
                 req.is_recruiting, req.playstyle, req.region, req.personality);
 
-            return await GetArmy(armyGuid.Result);
+            return await GetArmy(armyGuid);
         }
 
         [HttpPut("armies/{armyGuid}")]

@@ -54,20 +54,20 @@ namespace RIN.WebAPI.Controllers
         [HttpPost("UpdateCharaterAperance")]
         public async Task UpdateCharaterAperance(long charId, CharacterVisuals visuals)
         {
-            var result = Db.UpdateCharacterVisuals(charId, visuals);
+            var result = await Db.UpdateCharacterVisuals(charId, visuals);
         }
 
         [HttpPost("UpdateBattleframeAperance")]
         public async Task UpdateBattleframeAperance(long bfId, PlayerBattleframeVisuals visuals)
         {
-            var result = Db.UpdateBattleframeVisuals(bfId, visuals);
+            var result = await Db.UpdateBattleframeVisuals(bfId, visuals);
         }
 
         [HttpPost("AddBattleframeLoadout")]
         public async Task AddBattleframeLoadout(long charId, int battleframe_sdb_id, PlayerBattleframeVisuals? visuals)
         {
             visuals = visuals ?? PlayerBattleframeVisuals.CreateDefault();
-            var result = Db.CreateBattleframeLoadout(charId, battleframe_sdb_id, visuals);
+            var result = await Db.CreateBattleframeLoadout(charId, battleframe_sdb_id, visuals);
         }
     }
 

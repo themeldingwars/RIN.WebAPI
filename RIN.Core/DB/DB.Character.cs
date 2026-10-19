@@ -218,6 +218,13 @@ namespace RIN.Core.DB
 
             var char_select_results = await DBCall(async conn => conn.Query<dynamic>(CHAR_SELECT_SQL, new { accountId, characterGuid }));
 
+            // DBCall hands back default(T) when the call itself failed, which for a query is null.
+            // Guard it, otherwise the LINQ below throws ArgumentNullException and the route 500s.
+            if (char_select_results is null)
+            {
+                return new Error() { code = Error.Codes.ERR_UNKNOWN, message = "Failed to reach the database" };
+            }
+
             if (char_select_results.Count() == 0)
             {
                 return new Error() { code = Error.Codes.ERR_CHAR_NOT_FOUND, message = "Can't find a character with that GUID" };
@@ -234,6 +241,11 @@ namespace RIN.Core.DB
                 async conn => await conn.QueryAsync<dynamic>(IS_COMMANDER_SQL, new { characterGuid })
             );
 
+            if (isCommanderResults is null)
+            {
+                return new Error() { code = Error.Codes.ERR_UNKNOWN, message = "Failed to reach the database" };
+            }
+
             if (isCommanderResults.Any())
             {
                 return new Error() { code = Error.Codes.ERR_CANNOT_DELETE_COMMANDER, message = "Character is an army commander" };
@@ -248,6 +260,11 @@ namespace RIN.Core.DB
                             AND character_guid = @characterGuid";
 
             var select_results = await DBCall(async conn => conn.Query<dynamic>(SELECT_SQL, new { accountId, characterGuid }));
+
+            if (select_results is null)
+            {
+                return new Error() { code = Error.Codes.ERR_UNKNOWN, message = "Failed to reach the database" };
+            }
 
             if (select_results.Count() == 1)
             {
@@ -294,6 +311,11 @@ namespace RIN.Core.DB
                             AND webapi.""Characters"".character_guid = @characterGuid";
 
             var select_results = await DBCall(async conn => conn.Query<dynamic>(SELECT_SQL, new { accountId, characterGuid }));
+
+            if (select_results is null)
+            {
+                return new Error() { code = Error.Codes.ERR_UNKNOWN, message = "Failed to reach the database" };
+            }
 
             if (select_results.Count() == 0)
             {

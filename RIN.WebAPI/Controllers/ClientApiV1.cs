@@ -95,9 +95,9 @@ namespace RIN.WebAPI.Controllers
 
             // TODO: Check if name is blocked (reserved or contains profanity)
             // Both of these checks most likely should use new database tables that contains a list of blocked names
-            var isfree_result = Db.CheckIfNameIsFree(nameData.name);
+            var isfree_result = await Db.CheckIfNameIsFree(nameData.name);
 
-            if (isfree_result.Result == false)
+            if (isfree_result == false)
             {
                 data.reason.Add(Error.Codes.ERR_NAME_IN_USE);
             }
@@ -120,17 +120,17 @@ namespace RIN.WebAPI.Controllers
             using var tx = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
 
             var loginResult = await Db.GetLoginData(GetUid());
-            var delete_result = Db.SetPendingDeleteCharacterById(loginResult.account_id, characterGuid);
+            var delete_result = await Db.SetPendingDeleteCharacterById(loginResult.account_id, characterGuid);
 
             tx.Complete();
 
-            if (delete_result.Result.code == Error.Codes.SUCCESS)
+            if (delete_result.code == Error.Codes.SUCCESS)
             {
                 return true;
             }
             else
             {
-                return ReturnError(delete_result.Result, 404);
+                return ReturnError(delete_result, 404);
             }
         }
 
