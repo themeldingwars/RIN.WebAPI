@@ -73,6 +73,64 @@ namespace RIN.InternalAPI.Services
             return new TransferCharacterResp { Success = saved };
         }
 
+        public async ValueTask<CharacterInventoryResponse> GetCharacterInventory(CharacterID req)
+        {
+            var dbInventory = await Db.GetCharacterInventory(req.ID);
+
+            var resp = new CharacterInventoryResponse();
+
+            foreach (var item in dbInventory.items)
+            {
+                resp.Items.Add(new CharacterItem
+                {
+                    Guid         = (ulong)item.item_guid,
+                    SdbId        = (uint)item.sdb_id,
+                    SubInventory = (uint)item.sub_inventory,
+                    DynamicFlags = (uint)item.dynamic_flags,
+                    Durability   = (uint)item.durability,
+                    Modules      = item.modules.Select(x => new ItemModule
+                    {
+                        SlotIndex   = (uint)x.slot_index,
+                        ModuleSdbId = (uint)x.module_sdb_id
+                    }).ToList(),
+                });
+            }
+
+            foreach (var res in dbInventory.resources)
+            {
+                resp.Resources.Add(new CharacterResource
+                {
+                    SdbId        = (uint)res.sdb_id,
+                    Quantity     = (uint)res.quantity,
+                    SubInventory = (uint)res.sub_inventory,
+                });
+            }
+
+            foreach (var loadout in dbInventory.loadouts)
+            {
+                resp.Loadouts.Add(new CharacterLoadout
+                {
+                    LoadoutId   = loadout.loadout_id,
+                    ChassisId   = loadout.chassis_id,
+                    LoadoutName = loadout.loadout_name,
+                    LoadoutType = loadout.loadout_type,
+                });
+            }
+
+            foreach (var slot in dbInventory.slots)
+            {
+                resp.Slots.Add(new CharacterLoadoutSlotEntry
+                {
+                    LoadoutId = slot.loadout_id,
+                    ConfigId  = (uint)slot.config_id,
+                    SlotIndex = (uint)slot.slot_index,
+                    ItemGuid  = slot.item_guid,
+                });
+            }
+
+            return resp;
+        }
+
         public async IAsyncEnumerable<Event> Stream(IAsyncEnumerable<Command> commands, CallContext context = default)
         {
             var channel = Channel.CreateUnbounded<Event>();
@@ -134,6 +192,120 @@ namespace RIN.InternalAPI.Services
                             break;
                         case DeleteCharacterUnlock unlock:
                             await Db.DeleteCharacterUnlock((long)unlock.CharacterGuid, unlock.UnlockType, (int)unlock.UnlockId, (int)unlock.FrameId);
+                            break;
+                        case SaveInventoryItem item:
+                            await Db.SaveInventoryItem(
+                                (long)item.CharacterGuid,
+                                (long)item.ItemGuid,
+                                (int)item.SdbId,
+                                (short)item.SubInventory,
+                                (short)item.DynamicFlags,
+                                (int)item.Durability,
+                                item.Modules?.Select(x => new InventorySeedModule
+                                {
+                                    SlotIndex   = (short)x.SlotIndex,
+                                    ModuleSdbId = (int)x.ModuleSdbId
+                                }).ToList() ?? new List<InventorySeedModule>());
+                            await Db.NotifyInventoryUpdated((long)item.CharacterGuid);
+                            break;
+                        case SaveItemModule saveModule:
+                            await Db.SaveItemModule(
+                                (long)saveModule.CharacterGuid,
+                                (long)saveModule.ItemGuid,
+                                (short)saveModule.SlotIndex,
+                                (int)saveModule.ModuleSdbId);
+                            await Db.NotifyInventoryUpdated((long)saveModule.CharacterGuid);
+                            break;
+                        case DeleteItemModule deleteModule:
+                            await Db.DeleteItemModule(
+                                (long)deleteModule.CharacterGuid,
+                                (long)deleteModule.ItemGuid,
+                                (short)deleteModule.SlotIndex);
+                            await Db.NotifyInventoryUpdated((long)deleteModule.CharacterGuid);
+                            break;
+                        case SaveInventoryResource resource:
+                            await Db.SaveInventoryResource(
+                                (long)resource.CharacterGuid,
+                                (int)resource.SdbId,
+                                (int)resource.Quantity,
+                                (short)resource.SubInventory);
+                            await Db.NotifyInventoryUpdated((long)resource.CharacterGuid);
+                            break;
+                        case SeedCharacterInventory seed:
+                            var items = seed.Items?.Select(x => new InventorySeedItem
+                            {
+                                ItemGuid = (long)x.ItemGuid,
+                                SdbId = (int)x.SdbId,
+                                SubInventory = (short)x.SubInventory,
+                                DynamicFlags = (short)x.DynamicFlags,
+                                Durability = (int)x.Durability,
+                                Modules = x.Modules?.Select(m => new InventorySeedModule
+                                {
+                                    SlotIndex   = (short)m.SlotIndex,
+                                    ModuleSdbId = (int)m.ModuleSdbId
+                                }).ToList() ?? new List<InventorySeedModule>()
+                            }).ToList() ?? new List<InventorySeedItem>();
+                            var resources = seed.Resources?.Select(x => new InventorySeedResource
+                            {
+                                SdbId = (int)x.SdbId,
+                                Quantity = (int)x.Quantity,
+                                SubInventory = (short)x.SubInventory
+                            }).ToList() ?? new List<InventorySeedResource>();
+                            var loadouts = seed.Loadouts?.Select(x => new InventorySeedLoadout
+                            {
+                                LoadoutId = x.LoadoutId,
+                                ChassisId = (int)x.ChassisId,
+                                LoadoutName = x.LoadoutName,
+                                LoadoutType = x.LoadoutType
+                            }).ToList() ?? new List<InventorySeedLoadout>();
+                            var slots = seed.Slots?.Select(x => new InventorySeedLoadoutSlot
+                            {
+                                LoadoutId = x.LoadoutId,
+                                ConfigId = (short)x.ConfigId,
+                                SlotIndex = (short)x.SlotIndex,
+                                ItemGuid = (long)x.ItemGuid
+                            }).ToList() ?? new List<InventorySeedLoadoutSlot>();
+                            await Db.SeedCharacterInventory((long)seed.CharacterGuid, items, resources, loadouts, slots);
+                            await Db.NotifyInventoryUpdated((long)seed.CharacterGuid);
+                            break;
+                        case DeleteInventoryItem delItem:
+                            await Db.DeleteInventoryItem((long)delItem.CharacterGuid, (long)delItem.ItemGuid);
+                            await Db.NotifyInventoryUpdated((long)delItem.CharacterGuid);
+                            break;
+                        case SaveLoadoutSlot slot:
+                            await Db.SaveLoadoutSlot(
+                                (long)slot.CharacterGuid,
+                                slot.LoadoutId,
+                                (short)slot.ConfigId,
+                                (short)slot.SlotIndex,
+                                (long)slot.ItemGuid);
+                            await Db.NotifyInventoryUpdated((long)slot.CharacterGuid);
+                            break;
+                        case DeleteLoadoutSlot delSlot:
+                            await Db.DeleteLoadoutSlot(
+                                (long)delSlot.CharacterGuid,
+                                delSlot.LoadoutId,
+                                (short)delSlot.ConfigId,
+                                (short)delSlot.SlotIndex);
+                            await Db.NotifyInventoryUpdated((long)delSlot.CharacterGuid);
+                            break;
+                        case SaveCharacterLoadout loadout:
+                            await Db.SaveCharacterLoadout(
+                                (long)loadout.CharacterGuid,
+                                loadout.LoadoutId,
+                                loadout.ChassisId,
+                                loadout.Visuals,
+                                loadout.SlottedItems?.Select(x => new InventoryLoadoutSlotRow
+                                {
+                                    loadout_id = x.LoadoutId,
+                                    config_id = (short)x.ConfigId,
+                                    slot_index = (short)x.SlotIndex,
+                                    item_guid = x.ItemGuid
+                                }).ToList() ?? new List<InventoryLoadoutSlotRow>());
+                            await Db.NotifyInventoryUpdated((long)loadout.CharacterGuid);
+                            break;
+                        case SaveCurrentBattleframe bf:
+                            await Db.SetCharacterCurrentBattleframeBySdbId((long)bf.CharacterGuid, bf.ChassisId);
                             break;
                     }
                 }

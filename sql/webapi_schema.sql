@@ -938,7 +938,9 @@ CREATE TABLE webapi."Battleframes" (
     visuals bytea NOT NULL,
     hidden boolean DEFAULT false NOT NULL,
     level integer DEFAULT 1 NOT NULL,
-    xp bigint DEFAULT 0 NOT NULL
+    xp bigint DEFAULT 0 NOT NULL,
+    elite_level integer DEFAULT 0 NOT NULL,
+    elite_xp bigint DEFAULT 0 NOT NULL
 );
 
 
@@ -1008,6 +1010,102 @@ ALTER TABLE webapi."CharacterUnlocks" OWNER TO tmwadmin;
 --
 
 CREATE INDEX idx_character_unlocks_character ON webapi."CharacterUnlocks" (character_guid);
+
+--
+-- Name: LoadoutId_Seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE SEQUENCE webapi."LoadoutId_Seq"
+    START WITH 20001
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE webapi."LoadoutId_Seq" OWNER TO tmwadmin;
+
+--
+-- Name: CharacterItems; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."CharacterItems" (
+    item_guid bigint PRIMARY KEY DEFAULT webapi.create_entity_guid(253),
+    character_guid bigint NOT NULL,
+    sdb_id integer NOT NULL,
+    sub_inventory smallint NOT NULL DEFAULT 1,
+    dynamic_flags smallint NOT NULL DEFAULT 0,
+    durability integer NOT NULL DEFAULT 1000,
+    created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE webapi."CharacterItems" OWNER TO tmwadmin;
+
+CREATE INDEX idx_charitems_char ON webapi."CharacterItems"(character_guid);
+
+--
+-- Name: CharacterItemModules; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."CharacterItemModules" (
+    item_guid bigint NOT NULL,
+    slot_index smallint NOT NULL,
+    module_sdb_id integer NOT NULL,
+    PRIMARY KEY (item_guid, slot_index)
+);
+
+
+ALTER TABLE webapi."CharacterItemModules" OWNER TO tmwadmin;
+
+--
+-- Name: CharacterResources; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."CharacterResources" (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    character_guid bigint NOT NULL,
+    sdb_id integer NOT NULL,
+    quantity integer NOT NULL DEFAULT 0,
+    sub_inventory smallint NOT NULL DEFAULT 1,
+    UNIQUE(character_guid, sdb_id)
+);
+
+
+ALTER TABLE webapi."CharacterResources" OWNER TO tmwadmin;
+
+--
+-- Name: CharacterLoadouts; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."CharacterLoadouts" (
+    loadout_id integer PRIMARY KEY DEFAULT nextval('webapi."LoadoutId_Seq"'),
+    character_guid bigint NOT NULL,
+    chassis_id integer NOT NULL,
+    loadout_name text NOT NULL DEFAULT 'Loadout',
+    loadout_type text NOT NULL DEFAULT 'battleframe'
+);
+
+
+ALTER TABLE webapi."CharacterLoadouts" OWNER TO tmwadmin;
+
+CREATE INDEX idx_charloadouts_char ON webapi."CharacterLoadouts"(character_guid);
+
+--
+-- Name: CharacterLoadoutSlots; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."CharacterLoadoutSlots" (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    loadout_id integer NOT NULL,
+    config_id smallint NOT NULL DEFAULT 0,
+    slot_index smallint NOT NULL,
+    item_guid bigint NOT NULL,
+    UNIQUE(loadout_id, config_id, slot_index)
+);
+
+
+ALTER TABLE webapi."CharacterLoadoutSlots" OWNER TO tmwadmin;
 
 --
 -- Name: ClientEvents; Type: TABLE; Schema: webapi; Owner: tmwadmin
@@ -1735,6 +1833,54 @@ ALTER TABLE ONLY webapi."VipData"
 
 ALTER TABLE ONLY webapi."CharacterUnlocks"
     ADD CONSTRAINT character_unlocks_character_guid_fkey FOREIGN KEY (character_guid) REFERENCES webapi."Characters"(character_guid) ON DELETE CASCADE;
+
+
+--
+-- Name: CharacterItems character_items_character_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterItems"
+    ADD CONSTRAINT character_items_character_guid_fkey FOREIGN KEY (character_guid) REFERENCES webapi."Characters"(character_guid) ON DELETE CASCADE;
+
+
+--
+-- Name: CharacterResources character_resources_character_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterResources"
+    ADD CONSTRAINT character_resources_character_guid_fkey FOREIGN KEY (character_guid) REFERENCES webapi."Characters"(character_guid) ON DELETE CASCADE;
+
+
+--
+-- Name: CharacterLoadouts character_loadouts_character_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterLoadouts"
+    ADD CONSTRAINT character_loadouts_character_guid_fkey FOREIGN KEY (character_guid) REFERENCES webapi."Characters"(character_guid) ON DELETE CASCADE;
+
+
+--
+-- Name: CharacterLoadoutSlots character_loadout_slots_loadout_id_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterLoadoutSlots"
+    ADD CONSTRAINT character_loadout_slots_loadout_id_fkey FOREIGN KEY (loadout_id) REFERENCES webapi."CharacterLoadouts"(loadout_id) ON DELETE CASCADE;
+
+
+--
+-- Name: CharacterLoadoutSlots character_loadout_slots_item_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterLoadoutSlots"
+    ADD CONSTRAINT character_loadout_slots_item_guid_fkey FOREIGN KEY (item_guid) REFERENCES webapi."CharacterItems"(item_guid) ON DELETE CASCADE;
+
+
+--
+-- Name: CharacterItemModules character_item_modules_item_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterItemModules"
+    ADD CONSTRAINT character_item_modules_item_guid_fkey FOREIGN KEY (item_guid) REFERENCES webapi."CharacterItems"(item_guid) ON DELETE CASCADE;
 
 
 --

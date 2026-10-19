@@ -11,6 +11,7 @@ namespace RIN.InternalAPI
         public ValueTask<CharacterAndBattleframeVisuals> GetCharacterAndBattleframeVisuals(CharacterID req);
         public ValueTask<CharacterUnlocksResponse> GetCharacterUnlocks(CharacterID req);
         public ValueTask<TransferCharacterResp> TransferCharacter(TransferCharacterReq req);
+        public ValueTask<CharacterInventoryResponse> GetCharacterInventory(CharacterID req);
         public IAsyncEnumerable<Event> Stream(IAsyncEnumerable<Command> commands, CallContext context = default);
     }
 }
