@@ -22,22 +22,32 @@ namespace RIN.Core.DB
             return await DBCall(conn => conn.QueryFirstOrDefaultAsync<long?>(SELECT_SQL, new { characterId, battleframeSdbId }));
         }
 
+        /// <summary>
+        /// Creates the battleframe row for a chassis, or returns the existing one. Template seeding
+        /// already creates a row per chassis, so asking for a frame the character has must not fail.
+        /// </summary>
         public async ValueTask<long?> CreateBattleframeLoadout(long characterId, int battleframeSdId, PlayerBattleframeVisuals visuals)
         {
             const string INSERT_SQL = @"INSERT INTO webapi.""Battleframes""(
 		                        character_guid, battleframe_sdb_id, visuals, hidden, level, current_xp, lifetime_xp, elite_level, current_elite_xp, lifetime_elite_xp, id)
 		                        VALUES (@characterId, @battleframeSdId, @visuals, false, 1, 0, 0, 0, 0, 0, webapi.create_entity_guid(253))
+                            ON CONFLICT (character_guid, battleframe_sdb_id) DO NOTHING
                             RETURNING id";
 
             byte[] visualsData = Utils.MiscUtils.ToProtoBuffByteArray(visuals);
-            var result = await DBCall(async conn => conn.Query<long>(INSERT_SQL, new { characterId, battleframeSdId, visuals = visualsData }),
+            var inserted = await DBCall(conn => conn.QueryAsync<long>(INSERT_SQL, new { characterId, battleframeSdId, visuals = visualsData }),
                 exception =>
                 {
                     Logger.LogError("Error creating a battleframe loadout ({battleframeSdId}) for {characterId} due to: {exception}", characterId, battleframeSdId, exception);
                     throw exception;
                 });
 
-            return result.Single();
+            if (inserted.Any())
+            {
+                return inserted.First();
+            }
+
+            return await GetBattleframeId(characterId, battleframeSdId);
         }
 
         public async Task<long?> EnsureBattleframeRecord(long characterId, int battleframeSdbId, PlayerBattleframeVisuals? visuals = null)

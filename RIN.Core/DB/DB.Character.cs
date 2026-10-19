@@ -11,7 +11,7 @@ namespace RIN.Core.DB
 {
     public partial class DB
     {
-        public async Task<long> CreateNewCharacter(long accountId, string name, bool isDev, int voiceSetId, int gender, byte[] visualsBlob)
+        public async Task<long> CreateNewCharacter(long accountId, string name, bool isDev, int voiceSetId, int gender, byte[] visualsBlob, int templateId = 0)
         {
             var result = await DBCall(async conn =>
             {
@@ -22,6 +22,7 @@ namespace RIN.Core.DB
                 p.Add("@voice_setid", voiceSetId);
                 p.Add("@gender", gender);
                 p.Add("@visuals", visualsBlob);
+                p.Add("@template_id", templateId); // 0 selects the template flagged is_default. Pass an id to seed from another one.
 
                 p.Add("@error_text", dbType: DbType.String, direction: ParameterDirection.Output);
                 p.Add("@new_character_id", dbType: DbType.Int64, direction: ParameterDirection.Output);

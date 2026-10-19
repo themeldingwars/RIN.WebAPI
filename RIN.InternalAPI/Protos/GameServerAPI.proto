@@ -88,12 +88,12 @@ message BattleframeProgressionEntry {
    repeated BattleframeUpgradeEntry PreviousUpgrades = 10;
    repeated BattleframeAvailableUpgradeEntry AvailableUpgrades = 11;
 }
+message BattleframeProgressionResponse {
+   repeated BattleframeProgressionEntry Progression = 1;
+}
 message BattleframeUpgradeEntry {
    uint32 UpgradeId = 1;
    uint32 Count = 2;
-}
-message BattleframeProgressionResponse {
-   repeated BattleframeProgressionEntry Progression = 1;
 }
 message CharacterAndBattleframeVisuals {
    BasicCharacterInfo CharacterInfo = 1;
@@ -114,8 +114,8 @@ message CharacterItem {
    uint32 SdbId = 2;
    uint32 SubInventory = 3;
    uint32 DynamicFlags = 4;
-    uint32 Durability = 5;
-    repeated ItemModule Modules = 6;
+   uint32 Durability = 5;
+   repeated ItemModule Modules = 6;
 }
 message CharacterLoadout {
    int32 LoadoutId = 1;
@@ -190,6 +190,7 @@ message Command {
       SaveBattleframeUpgrade SaveBattleframeUpgrade = 17;
       ClearBattleframeUpgrades ClearBattleframeUpgrades = 18;
       SaveBattleframeAvailableUpgrades SaveBattleframeAvailableUpgrades = 19;
+      SeedCharacterFromTemplate SeedCharacterFromTemplate = 20;
    }
 }
 message DeleteCharacterUnlock {
@@ -199,19 +200,19 @@ message DeleteCharacterUnlock {
    uint32 FrameId = 4;
 }
 message DeleteInventoryItem {
-    uint64 CharacterGuid = 1;
-    int64 ItemGuid = 2;
+   uint64 CharacterGuid = 1;
+   int64 ItemGuid = 2;
 }
 message DeleteItemModule {
-    uint64 CharacterGuid = 1;
-    int64 ItemGuid = 2;
-    uint32 SlotIndex = 3;
+   uint64 CharacterGuid = 1;
+   int64 ItemGuid = 2;
+   uint32 SlotIndex = 3;
 }
 message DeleteLoadoutSlot {
-    uint64 CharacterGuid = 1;
-    int32 LoadoutId = 2;
-    uint32 ConfigId = 3;
-    uint32 SlotIndex = 4;
+   uint64 CharacterGuid = 1;
+   int32 LoadoutId = 2;
+   uint32 ConfigId = 3;
+   uint32 SlotIndex = 4;
 }
 message Event {
    oneof subtype {
@@ -232,12 +233,37 @@ message Event {
       UnlocksUpdated UnlocksUpdated = 15;
    }
 }
+message InventoryItemData {
+   int64 ItemGuid = 1;
+   uint32 SdbId = 2;
+   uint32 SubInventory = 3;
+   uint32 DynamicFlags = 4;
+   uint32 Durability = 5;
+   repeated ItemModule Modules = 6;
+}
+message InventoryLoadoutData {
+   int32 LoadoutId = 1;
+   uint32 ChassisId = 2;
+   string LoadoutName = 3;
+   string LoadoutType = 4;
+}
+message InventoryLoadoutSlotData {
+   int32 LoadoutId = 1;
+   uint32 ConfigId = 2;
+   uint32 SlotIndex = 3;
+   int64 ItemGuid = 4;
+}
+message InventoryResourceData {
+   uint32 SdbId = 1;
+   uint32 Quantity = 2;
+   uint32 SubInventory = 3;
+}
 message InventoryUpdated {
-    uint64 CharacterGuid = 1;
+   uint64 CharacterGuid = 1;
 }
 message ItemModule {
-    uint32 SlotIndex = 1;
-    uint32 ModuleSdbId = 2;
+   uint32 SlotIndex = 1;
+   uint32 ModuleSdbId = 2;
 }
 message PingReq {
    .google.protobuf.Timestamp SentTime = 1;
@@ -303,26 +329,26 @@ message SaveGameSessionData {
    uint32 OutpostId = 3;
    uint32 TimePlayed = 4;
 }
-message SaveItemModule {
-    uint64 CharacterGuid = 1;
-    int64 ItemGuid = 2;
-    uint32 SlotIndex = 3;
-    uint32 ModuleSdbId = 4;
-}
 message SaveInventoryItem {
-    uint64 CharacterGuid = 1;
-    int64 ItemGuid = 2;
-    uint32 SdbId = 3;
-    uint32 SubInventory = 4;
-    uint32 DynamicFlags = 5;
-    uint32 Durability = 6;
-    repeated ItemModule Modules = 7;
+   uint64 CharacterGuid = 1;
+   int64 ItemGuid = 2;
+   uint32 SdbId = 3;
+   uint32 SubInventory = 4;
+   uint32 DynamicFlags = 5;
+   uint32 Durability = 6;
+   repeated ItemModule Modules = 7;
 }
 message SaveInventoryResource {
    uint64 CharacterGuid = 1;
    uint32 SdbId = 2;
    uint32 Quantity = 3;
    uint32 SubInventory = 4;
+}
+message SaveItemModule {
+   uint64 CharacterGuid = 1;
+   int64 ItemGuid = 2;
+   uint32 SlotIndex = 3;
+   uint32 ModuleSdbId = 4;
 }
 message SaveLgvRaceFinish {
    uint64 CharacterGuid = 1;
@@ -336,37 +362,16 @@ message SaveLoadoutSlot {
    uint32 SlotIndex = 4;
    int64 ItemGuid = 5;
 }
+message SeedCharacterFromTemplate {
+   uint64 CharacterGuid = 1;
+   uint32 TemplateId = 2;
+}
 message SeedCharacterInventory {
    uint64 CharacterGuid = 1;
    repeated InventoryItemData Items = 2;
    repeated InventoryResourceData Resources = 3;
    repeated InventoryLoadoutData Loadouts = 4;
    repeated InventoryLoadoutSlotData Slots = 5;
-}
-message InventoryItemData {
-   int64 ItemGuid = 1;
-   uint32 SdbId = 2;
-   uint32 SubInventory = 3;
-   uint32 DynamicFlags = 4;
-    uint32 Durability = 5;
-    repeated ItemModule Modules = 6;
-}
-message InventoryResourceData {
-   uint32 SdbId = 1;
-   uint32 Quantity = 2;
-   uint32 SubInventory = 3;
-}
-message InventoryLoadoutData {
-   int32 LoadoutId = 1;
-   uint32 ChassisId = 2;
-   string LoadoutName = 3;
-   string LoadoutType = 4;
-}
-message InventoryLoadoutSlotData {
-   int32 LoadoutId = 1;
-   uint32 ConfigId = 2;
-   uint32 SlotIndex = 3;
-   int64 ItemGuid = 4;
 }
 message TransferCharacterReq {
    uint64 CharacterId = 1;

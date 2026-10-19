@@ -234,6 +234,19 @@ namespace RIN.Core.DB
             });
         }
 
+        /// <summary>
+        /// Seeds a character from one of the webapi."NewCharacterTemplates" rows: items, resources,
+        /// loadouts, loadout slots and a battleframe progression row per chassis. A no-op if the
+        /// character already has items, and never overwrites a battleframe the character already has.
+        /// templateId 0 selects the template flagged is_default.
+        /// </summary>
+        public async Task<bool> SeedCharacterFromTemplate(long characterGuid, int templateId)
+        {
+            const string CALL_SQL = @"SELECT webapi.""seed_character_inventory""(@characterGuid, @templateId)";
+
+            return await DBCall(conn => conn.ExecuteAsync(CALL_SQL, new { characterGuid, templateId })) > 0;
+        }
+
         public async Task<long?> AddInventoryItem(long characterGuid, int sdbId)
         {
             const string INSERT_SQL = @"INSERT INTO webapi.""CharacterItems"" (item_guid, character_guid, sdb_id, sub_inventory, dynamic_flags, durability)

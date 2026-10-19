@@ -168,7 +168,7 @@ namespace RIN.WebAPI.Controllers
             {
                 var charId    = await Db.CreateNewCharacter(loginResult.account_id, reqData.name, reqData.is_dev, reqData.voice_set, genderInt, visualBlob);
                 var bfVisuals = PlayerBattleframeVisuals.CreateDefault();
-                var bfId      = await Db.CreateBattleframeLoadout(charId, reqData.start_class_id, bfVisuals);
+                var bfId      = await Db.EnsureBattleframeRecord(charId, reqData.start_class_id, bfVisuals);
                 await Db.SetCharacterCurrentBattleframe(charId, bfId.Value);
 
                 tx.Complete();

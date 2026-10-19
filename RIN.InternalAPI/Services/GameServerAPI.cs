@@ -308,6 +308,10 @@ namespace RIN.InternalAPI.Services
                             await Db.SeedCharacterInventory((long)seed.CharacterGuid, items, resources, loadouts, slots);
                             await Db.NotifyInventoryUpdated((long)seed.CharacterGuid);
                             break;
+                        case SeedCharacterFromTemplate seedTemplate:
+                            await Db.SeedCharacterFromTemplate((long)seedTemplate.CharacterGuid, (int)seedTemplate.TemplateId);
+                            await Db.NotifyInventoryUpdated((long)seedTemplate.CharacterGuid);
+                            break;
                         case DeleteInventoryItem delItem:
                             await Db.DeleteInventoryItem((long)delItem.CharacterGuid, (long)delItem.ItemGuid);
                             await Db.NotifyInventoryUpdated((long)delItem.CharacterGuid);

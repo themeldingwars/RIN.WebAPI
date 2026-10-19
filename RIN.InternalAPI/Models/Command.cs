@@ -23,6 +23,7 @@ namespace RIN.InternalAPI.Models
     [ProtoInclude(17, typeof(SaveBattleframeUpgrade))]
     [ProtoInclude(18, typeof(ClearBattleframeUpgrades))]
     [ProtoInclude(19, typeof(SaveBattleframeAvailableUpgrades))]
+    [ProtoInclude(20, typeof(SeedCharacterFromTemplate))]
     public abstract class Command;
 
     [ProtoContract]
@@ -89,6 +90,13 @@ namespace RIN.InternalAPI.Models
         [ProtoMember(3)] public List<InventoryResourceData> Resources { get; set; } = new();
         [ProtoMember(4)] public List<InventoryLoadoutData> Loadouts { get; set; } = new();
         [ProtoMember(5)] public List<InventoryLoadoutSlotData> Slots { get; set; } = new();
+    }
+
+    [ProtoContract]
+    public class SeedCharacterFromTemplate : Command
+    {
+        [ProtoMember(1)] public ulong CharacterGuid { get; set; }
+        [ProtoMember(2)] public uint TemplateId { get; set; }
     }
 
     [ProtoContract]
