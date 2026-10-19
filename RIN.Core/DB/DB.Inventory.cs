@@ -319,8 +319,8 @@ namespace RIN.Core.DB
 
                 if (!bfId.HasValue || bfId.Value <= 0)
                 {
-                    bfId = await conn.QueryFirstOrDefaultAsync<long?>(@"INSERT INTO webapi.""Battleframes"" (id, character_guid, battleframe_sdb_id, visuals, hidden, level, xp, elite_level, elite_xp)
-                                                                          VALUES (webapi.create_entity_guid(253), @characterGuid, @chassisId, @visuals, false, 1, 0, 0, 0)
+                    bfId = await conn.QueryFirstOrDefaultAsync<long?>(@"INSERT INTO webapi.""Battleframes"" (id, character_guid, battleframe_sdb_id, visuals, hidden, level, current_xp, lifetime_xp, elite_level, current_elite_xp, lifetime_elite_xp)
+                                                                          VALUES (webapi.create_entity_guid(253), @characterGuid, @chassisId, @visuals, false, 1, 0, 0, 0, 0, 0)
                                                                           RETURNING id",
                         new { characterGuid, chassisId, visuals = Utils.MiscUtils.ToProtoBuffByteArray(visuals) }, tx);
                 }

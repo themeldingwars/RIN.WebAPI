@@ -1037,6 +1037,37 @@ ALTER TABLE webapi."ArmyRanks" ALTER COLUMN army_rank_id ADD GENERATED ALWAYS AS
 
 
 --
+-- Name: BattleframeAvailableUpgrades; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."BattleframeAvailableUpgrades" (
+    battleframe_guid bigint NOT NULL,
+    upgrade_index integer NOT NULL,
+    upgrade_id integer NOT NULL,
+    category integer NOT NULL,
+    stat_value real NOT NULL,
+    count integer,
+    item_sdb_id integer,
+    localization_id integer NOT NULL
+);
+
+
+ALTER TABLE webapi."BattleframeAvailableUpgrades" OWNER TO tmwadmin;
+
+--
+-- Name: BattleframePreviousUpgrades; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."BattleframePreviousUpgrades" (
+    battleframe_guid bigint NOT NULL,
+    upgrade_id integer NOT NULL,
+    count integer DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE webapi."BattleframePreviousUpgrades" OWNER TO tmwadmin;
+
+--
 -- Name: Battleframes; Type: TABLE; Schema: webapi; Owner: tmwadmin
 --
 
@@ -1047,9 +1078,12 @@ CREATE TABLE webapi."Battleframes" (
     visuals bytea NOT NULL,
     hidden boolean DEFAULT false NOT NULL,
     level integer DEFAULT 1 NOT NULL,
-    xp bigint DEFAULT 0 NOT NULL,
+    current_xp bigint DEFAULT 0 NOT NULL,
+    lifetime_xp bigint DEFAULT 0 NOT NULL,
     elite_level integer DEFAULT 0 NOT NULL,
-    elite_xp bigint DEFAULT 0 NOT NULL
+    current_elite_xp bigint DEFAULT 0 NOT NULL,
+    lifetime_elite_xp bigint DEFAULT 0 NOT NULL,
+    elite_points integer DEFAULT 0 NOT NULL
 );
 
 
@@ -1776,6 +1810,22 @@ ALTER TABLE ONLY webapi."Accounts"
 
 
 --
+-- Name: BattleframeAvailableUpgrades battleframe_available_upgrades_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."BattleframeAvailableUpgrades"
+    ADD CONSTRAINT battleframe_available_upgrades_pkey PRIMARY KEY (battleframe_guid, upgrade_index);
+
+
+--
+-- Name: BattleframePreviousUpgrades battleframe_previous_upgrades_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."BattleframePreviousUpgrades"
+    ADD CONSTRAINT battleframe_previous_upgrades_pkey PRIMARY KEY (battleframe_guid, upgrade_id);
+
+
+--
 -- Name: Battleframes battleframes_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -1965,6 +2015,22 @@ ALTER TABLE ONLY webapi."ArmyMembers"
 
 ALTER TABLE ONLY webapi."ArmyRanks"
     ADD CONSTRAINT "ArmyRanks_army_guid_fkey" FOREIGN KEY (army_guid) REFERENCES webapi."Armies"(army_guid) ON DELETE CASCADE;
+
+
+--
+-- Name: BattleframeAvailableUpgrades battleframe_available_upgrades_battleframe_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."BattleframeAvailableUpgrades"
+    ADD CONSTRAINT battleframe_available_upgrades_battleframe_guid_fkey FOREIGN KEY (battleframe_guid) REFERENCES webapi."Battleframes"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: BattleframePreviousUpgrades battleframe_previous_upgrades_battleframe_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."BattleframePreviousUpgrades"
+    ADD CONSTRAINT battleframe_previous_upgrades_battleframe_guid_fkey FOREIGN KEY (battleframe_guid) REFERENCES webapi."Battleframes"(id) ON DELETE CASCADE;
 
 
 --

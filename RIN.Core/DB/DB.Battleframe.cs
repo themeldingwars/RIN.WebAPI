@@ -25,8 +25,8 @@ namespace RIN.Core.DB
         public async ValueTask<long?> CreateBattleframeLoadout(long characterId, int battleframeSdId, PlayerBattleframeVisuals visuals)
         {
             const string INSERT_SQL = @"INSERT INTO webapi.""Battleframes""(
-		                        character_guid, battleframe_sdb_id, visuals, hidden, level, xp, elite_level, elite_xp, id)
-		                        VALUES (@characterId, @battleframeSdId, @visuals, false, 1, 0, 0, 0, webapi.create_entity_guid(253))
+		                        character_guid, battleframe_sdb_id, visuals, hidden, level, current_xp, lifetime_xp, elite_level, current_elite_xp, lifetime_elite_xp, id)
+		                        VALUES (@characterId, @battleframeSdId, @visuals, false, 1, 0, 0, 0, 0, 0, webapi.create_entity_guid(253))
                             RETURNING id";
 
             byte[] visualsData = Utils.MiscUtils.ToProtoBuffByteArray(visuals);
@@ -82,6 +82,146 @@ namespace RIN.Core.DB
             }
 
             return await SetCharacterCurrentBattleframe(charId, battleframeId.Value);
+        }
+
+        public async Task<IEnumerable<BattleframeProgressionRow>> GetBattleframeProgression(long characterGuid)
+        {
+            const string SQL = @"
+                SELECT id, battleframe_sdb_id, level, current_xp, lifetime_xp,
+                       elite_level, current_elite_xp, lifetime_elite_xp, elite_points
+                FROM webapi.""Battleframes""
+                WHERE character_guid = @characterGuid
+                ORDER BY battleframe_sdb_id;
+
+                SELECT p.battleframe_guid, p.upgrade_id, p.count
+                FROM webapi.""BattleframePreviousUpgrades"" p
+                INNER JOIN webapi.""Battleframes"" b ON p.battleframe_guid = b.id
+                WHERE b.character_guid = @characterGuid
+                ORDER BY p.battleframe_guid, p.upgrade_id;
+
+                SELECT a.battleframe_guid, a.upgrade_index, a.upgrade_id, a.category, a.stat_value,
+                       a.count, a.item_sdb_id, a.localization_id
+                FROM webapi.""BattleframeAvailableUpgrades"" a
+                INNER JOIN webapi.""Battleframes"" b ON a.battleframe_guid = b.id
+                WHERE b.character_guid = @characterGuid
+                ORDER BY a.battleframe_guid, a.upgrade_index;";
+
+            return await DBCall(async conn =>
+            {
+                using var multi = await conn.QueryMultipleAsync(SQL, new { characterGuid });
+                var frames = (await multi.ReadAsync<BattleframeProgressionRow>()).ToList();
+                var previousUpgrades = (await multi.ReadAsync<BattleframePreviousUpgradeRow>()).ToList();
+                var availableUpgrades = (await multi.ReadAsync<BattleframeAvailableUpgradeRow>()).ToList();
+
+                var previousByFrame = previousUpgrades.GroupBy(x => x.battleframe_guid).ToDictionary(g => g.Key, g => g.ToList());
+                var availableByFrame = availableUpgrades.GroupBy(x => x.battleframe_guid).ToDictionary(g => g.Key, g => g.ToList());
+
+                foreach (var frame in frames)
+                {
+                    if (previousByFrame.TryGetValue(frame.id, out var previousList))
+                        frame.previous_upgrades = previousList;
+
+                    if (availableByFrame.TryGetValue(frame.id, out var availableList))
+                        frame.available_upgrades = availableList;
+                }
+
+                return frames;
+            });
+        }
+
+        public async Task<bool> UpdateBattleframeXp(long characterGuid, int battleframeSdbId, int level, long currentXp, long lifetimeXp)
+        {
+            const string UPDATE_SQL = @"UPDATE webapi.""Battleframes""
+		                        SET level       = @level,
+		                            current_xp  = @currentXp,
+		                            lifetime_xp = @lifetimeXp
+		                        WHERE character_guid     = @characterGuid
+		                          AND battleframe_sdb_id = @battleframeSdbId";
+
+            var affected = await DBCall(conn => conn.ExecuteAsync(UPDATE_SQL, new { characterGuid, battleframeSdbId, level, currentXp, lifetimeXp }));
+            return affected > 0;
+        }
+
+        public async Task<bool> UpdateBattleframeEliteXp(long characterGuid, int battleframeSdbId, int eliteLevel, long currentEliteXp, long lifetimeEliteXp, int elitePoints)
+        {
+            const string UPDATE_SQL = @"UPDATE webapi.""Battleframes""
+		                        SET elite_level       = @eliteLevel,
+		                            current_elite_xp  = @currentEliteXp,
+		                            lifetime_elite_xp = @lifetimeEliteXp,
+		                            elite_points      = @elitePoints
+		                        WHERE character_guid     = @characterGuid
+		                          AND battleframe_sdb_id = @battleframeSdbId";
+
+            var affected = await DBCall(conn => conn.ExecuteAsync(UPDATE_SQL, new { characterGuid, battleframeSdbId, eliteLevel, currentEliteXp, lifetimeEliteXp, elitePoints }));
+            return affected > 0;
+        }
+
+        public async Task<bool> SaveBattleframeUpgrade(long characterGuid, int battleframeSdbId, int upgradeId, int count)
+        {
+            const string UPSERT_SQL = @"INSERT INTO webapi.""BattleframePreviousUpgrades"" (battleframe_guid, upgrade_id, count)
+                                        SELECT b.id, @upgradeId, @count
+                                        FROM webapi.""Battleframes"" b
+                                        WHERE b.character_guid = @characterGuid
+                                          AND b.battleframe_sdb_id = @battleframeSdbId
+                                        ON CONFLICT (battleframe_guid, upgrade_id)
+                                        DO UPDATE SET count = EXCLUDED.count";
+
+            var affected = await DBCall(conn => conn.ExecuteAsync(UPSERT_SQL, new { characterGuid, battleframeSdbId, upgradeId, count }));
+            return affected > 0;
+        }
+
+        public async Task<bool> ClearBattleframeUpgrades(long characterGuid, int battleframeSdbId)
+        {
+            const string DELETE_SQL = @"DELETE FROM webapi.""BattleframePreviousUpgrades""
+                                        WHERE battleframe_guid IN (SELECT id
+                                                                   FROM webapi.""Battleframes""
+                                                                   WHERE character_guid = @characterGuid
+                                                                     AND battleframe_sdb_id = @battleframeSdbId)";
+
+            var affected = await DBCall(conn => conn.ExecuteAsync(DELETE_SQL, new { characterGuid, battleframeSdbId }));
+            return affected >= 0;
+        }
+
+        public async Task<bool> SaveBattleframeAvailableUpgrades(long characterGuid, int battleframeSdbId, List<BattleframeAvailableUpgradeRow> upgrades)
+        {
+            const string DELETE_SQL = @"DELETE FROM webapi.""BattleframeAvailableUpgrades""
+                                        WHERE battleframe_guid IN (SELECT id
+                                                                   FROM webapi.""Battleframes""
+                                                                   WHERE character_guid = @characterGuid
+                                                                     AND battleframe_sdb_id = @battleframeSdbId)";
+
+            const string INSERT_SQL = @"INSERT INTO webapi.""BattleframeAvailableUpgrades""
+		                        (battleframe_guid, upgrade_index, upgrade_id, category, stat_value, count, item_sdb_id, localization_id)
+		                        SELECT b.id, @upgradeIndex, @upgradeId, @category, @statValue, @count, @itemSdbId, @localizationId
+		                        FROM webapi.""Battleframes"" b
+		                        WHERE b.character_guid = @characterGuid
+		                          AND b.battleframe_sdb_id = @battleframeSdbId";
+
+            return await DBCall(async conn =>
+            {
+                await using var tx = await conn.BeginTransactionAsync();
+
+                await conn.ExecuteAsync(DELETE_SQL, new { characterGuid, battleframeSdbId }, tx);
+
+                foreach (var upgrade in upgrades ?? new List<BattleframeAvailableUpgradeRow>())
+                {
+                    await conn.ExecuteAsync(INSERT_SQL, new
+                    {
+                        characterGuid,
+                        battleframeSdbId,
+                        upgradeIndex    = upgrade.upgrade_index,
+                        upgradeId       = upgrade.upgrade_id,
+                        category        = upgrade.category,
+                        statValue       = upgrade.stat_value,
+                        count           = upgrade.count,
+                        itemSdbId       = upgrade.item_sdb_id,
+                        localizationId  = upgrade.localization_id
+                    }, tx);
+                }
+
+                await tx.CommitAsync();
+                return true;
+            });
         }
 
         public async Task<bool> UpdateBattleframeVisuals(long battleframeId, PlayerBattleframeVisuals visuals)
@@ -225,5 +365,39 @@ namespace RIN.Core.DB
 
             return result;
         }
+    }
+
+    public class BattleframeProgressionRow
+    {
+        public long id { get; set; }
+        public int battleframe_sdb_id { get; set; }
+        public int level { get; set; }
+        public long current_xp { get; set; }
+        public long lifetime_xp { get; set; }
+        public int elite_level { get; set; }
+        public long current_elite_xp { get; set; }
+        public long lifetime_elite_xp { get; set; }
+        public int elite_points { get; set; }
+        public List<BattleframePreviousUpgradeRow> previous_upgrades { get; set; } = new();
+        public List<BattleframeAvailableUpgradeRow> available_upgrades { get; set; } = new();
+    }
+
+    public class BattleframePreviousUpgradeRow
+    {
+        public long battleframe_guid { get; set; }
+        public int upgrade_id { get; set; }
+        public int count { get; set; }
+    }
+
+    public class BattleframeAvailableUpgradeRow
+    {
+        public long battleframe_guid { get; set; }
+        public int upgrade_index { get; set; }
+        public int upgrade_id { get; set; }
+        public int category { get; set; }
+        public float stat_value { get; set; }
+        public int? count { get; set; }
+        public int? item_sdb_id { get; set; }
+        public int localization_id { get; set; }
     }
 }

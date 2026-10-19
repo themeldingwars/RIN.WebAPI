@@ -18,6 +18,11 @@ namespace RIN.InternalAPI.Models
     [ProtoInclude(12, typeof(DeleteItemModule))]
     [ProtoInclude(13, typeof(DeleteLoadoutSlot))]
     [ProtoInclude(14, typeof(DeleteCharacterUnlock))]
+    [ProtoInclude(15, typeof(SaveBattleframeXp))]
+    [ProtoInclude(16, typeof(SaveBattleframeEliteXp))]
+    [ProtoInclude(17, typeof(SaveBattleframeUpgrade))]
+    [ProtoInclude(18, typeof(ClearBattleframeUpgrades))]
+    [ProtoInclude(19, typeof(SaveBattleframeAvailableUpgrades))]
     public abstract class Command;
 
     [ProtoContract]
@@ -181,5 +186,50 @@ namespace RIN.InternalAPI.Models
         [ProtoMember(1)] public ulong CharacterGuid { get; set; }
         [ProtoMember(2)] public long ItemGuid { get; set; }
         [ProtoMember(3)] public uint SlotIndex { get; set; }
+    }
+
+    [ProtoContract]
+    public class SaveBattleframeXp : Command
+    {
+        [ProtoMember(1)] public ulong CharacterGuid { get; set; }
+        [ProtoMember(2)] public uint BattleframeSdbId { get; set; }
+        [ProtoMember(3)] public uint Level { get; set; }
+        [ProtoMember(4)] public ulong CurrentXp { get; set; }
+        [ProtoMember(5)] public ulong LifetimeXp { get; set; }
+    }
+
+    [ProtoContract]
+    public class SaveBattleframeEliteXp : Command
+    {
+        [ProtoMember(1)] public ulong CharacterGuid { get; set; }
+        [ProtoMember(2)] public uint BattleframeSdbId { get; set; }
+        [ProtoMember(3)] public uint EliteLevel { get; set; }
+        [ProtoMember(4)] public ulong CurrentEliteXp { get; set; }
+        [ProtoMember(5)] public ulong LifetimeEliteXp { get; set; }
+        [ProtoMember(6)] public uint ElitePoints { get; set; }
+    }
+
+    [ProtoContract]
+    public class SaveBattleframeUpgrade : Command
+    {
+        [ProtoMember(1)] public ulong CharacterGuid { get; set; }
+        [ProtoMember(2)] public uint BattleframeSdbId { get; set; }
+        [ProtoMember(3)] public uint UpgradeId { get; set; }
+        [ProtoMember(4)] public uint Count { get; set; }
+    }
+
+    [ProtoContract]
+    public class ClearBattleframeUpgrades : Command
+    {
+        [ProtoMember(1)] public ulong CharacterGuid { get; set; }
+        [ProtoMember(2)] public uint BattleframeSdbId { get; set; }
+    }
+
+    [ProtoContract]
+    public class SaveBattleframeAvailableUpgrades : Command
+    {
+        [ProtoMember(1)] public ulong CharacterGuid { get; set; }
+        [ProtoMember(2)] public uint BattleframeSdbId { get; set; }
+        [ProtoMember(3)] public List<BattleframeAvailableUpgradeEntry> Upgrades { get; set; } = new();
     }
 }

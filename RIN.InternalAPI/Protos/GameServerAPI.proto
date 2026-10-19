@@ -66,6 +66,35 @@ message BasicCharacterInfo {
    uint32 LastOutpostId = 11;
    uint32 TimePlayed = 12;
 }
+message BattleframeAvailableUpgradeEntry {
+   uint32 UpgradeIndex = 1;
+   uint32 UpgradeId = 2;
+   uint32 Category = 3;
+   float StatValue = 4;
+   optional uint32 Count = 5;
+   optional uint32 ItemSdbId = 6;
+   uint32 LocalizationId = 7;
+}
+message BattleframeProgressionEntry {
+   uint64 BattleframeSdbId = 1;
+   uint64 BattleframeGuid = 2;
+   uint32 Level = 3;
+   uint64 CurrentXp = 4;
+   uint64 LifetimeXp = 5;
+   uint32 EliteLevel = 6;
+   uint64 CurrentEliteXp = 7;
+   uint64 LifetimeEliteXp = 8;
+   uint32 ElitePoints = 9;
+   repeated BattleframeUpgradeEntry PreviousUpgrades = 10;
+   repeated BattleframeAvailableUpgradeEntry AvailableUpgrades = 11;
+}
+message BattleframeUpgradeEntry {
+   uint32 UpgradeId = 1;
+   uint32 Count = 2;
+}
+message BattleframeProgressionResponse {
+   repeated BattleframeProgressionEntry Progression = 1;
+}
 message CharacterAndBattleframeVisuals {
    BasicCharacterInfo CharacterInfo = 1;
    CharacterVisuals CharacterVisuals = 2;
@@ -136,6 +165,10 @@ message CharacterVisualsUpdated {
    uint64 CharacterGuid = 1;
    CharacterAndBattleframeVisuals CharacterAndBattleframeVisuals = 2;
 }
+message ClearBattleframeUpgrades {
+   uint64 CharacterGuid = 1;
+   uint32 BattleframeSdbId = 2;
+}
 message Command {
    oneof subtype {
       SaveGameSessionData SaveGameSessionData = 1;
@@ -152,6 +185,11 @@ message Command {
       DeleteItemModule DeleteItemModule = 12;
       DeleteLoadoutSlot DeleteLoadoutSlot = 13;
       DeleteCharacterUnlock DeleteCharacterUnlock = 14;
+      SaveBattleframeXp SaveBattleframeXp = 15;
+      SaveBattleframeEliteXp SaveBattleframeEliteXp = 16;
+      SaveBattleframeUpgrade SaveBattleframeUpgrade = 17;
+      ClearBattleframeUpgrades ClearBattleframeUpgrades = 18;
+      SaveBattleframeAvailableUpgrades SaveBattleframeAvailableUpgrades = 19;
    }
 }
 message DeleteCharacterUnlock {
@@ -215,6 +253,32 @@ message PlayerBattleframeVisuals {
    repeated int32 decalgradients = 4 [packed = false];
    repeated int32 warpaint_patterns = 5 [packed = false];
    repeated int32 visual_overrides = 6 [packed = false];
+}
+message SaveBattleframeAvailableUpgrades {
+   uint64 CharacterGuid = 1;
+   uint32 BattleframeSdbId = 2;
+   repeated BattleframeAvailableUpgradeEntry Upgrades = 3;
+}
+message SaveBattleframeEliteXp {
+   uint64 CharacterGuid = 1;
+   uint32 BattleframeSdbId = 2;
+   uint32 EliteLevel = 3;
+   uint64 CurrentEliteXp = 4;
+   uint64 LifetimeEliteXp = 5;
+   uint32 ElitePoints = 6;
+}
+message SaveBattleframeUpgrade {
+   uint64 CharacterGuid = 1;
+   uint32 BattleframeSdbId = 2;
+   uint32 UpgradeId = 3;
+   uint32 Count = 4;
+}
+message SaveBattleframeXp {
+   uint64 CharacterGuid = 1;
+   uint32 BattleframeSdbId = 2;
+   uint32 Level = 3;
+   uint64 CurrentXp = 4;
+   uint64 LifetimeXp = 5;
 }
 message SaveCharacterLoadout {
    uint64 CharacterGuid = 1;
@@ -340,6 +404,7 @@ message WebIdValueColorId {
    WebColorId color = 2;
 }
 service GameServerAPI {
+   rpc GetBattleframeProgression (CharacterID) returns (BattleframeProgressionResponse);
    rpc GetCharacterAndBattleframeVisuals (CharacterID) returns (CharacterAndBattleframeVisuals);
    rpc GetCharacterInventory (CharacterID) returns (CharacterInventoryResponse);
    rpc GetCharacterUnlocks (CharacterID) returns (CharacterUnlocksResponse);

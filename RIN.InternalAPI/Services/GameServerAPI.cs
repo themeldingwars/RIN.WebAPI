@@ -66,6 +66,46 @@ namespace RIN.InternalAPI.Services
             return resp;
         }
 
+        public async ValueTask<BattleframeProgressionResponse> GetBattleframeProgression(CharacterID req)
+        {
+            var dbProgression = await Db.GetBattleframeProgression(req.ID);
+
+            var resp = new BattleframeProgressionResponse();
+
+            foreach (var battleframe in dbProgression)
+            {
+                resp.Progression.Add(new BattleframeProgressionEntry
+                {
+                    BattleframeSdbId = (uint)battleframe.battleframe_sdb_id,
+                    BattleframeGuid  = (ulong)battleframe.id,
+                    Level            = (uint)battleframe.level,
+                    CurrentXp        = (ulong)battleframe.current_xp,
+                    LifetimeXp       = (ulong)battleframe.lifetime_xp,
+                    EliteLevel       = (uint)battleframe.elite_level,
+                    CurrentEliteXp   = (ulong)battleframe.current_elite_xp,
+                    LifetimeEliteXp  = (ulong)battleframe.lifetime_elite_xp,
+                    ElitePoints      = (uint)battleframe.elite_points,
+                    PreviousUpgrades = battleframe.previous_upgrades.Select(x => new BattleframeUpgradeEntry
+                    {
+                        UpgradeId = (uint)x.upgrade_id,
+                        Count     = (uint)x.count
+                    }).ToList(),
+                    AvailableUpgrades = battleframe.available_upgrades.Select(x => new BattleframeAvailableUpgradeEntry
+                    {
+                        UpgradeIndex   = (uint)x.upgrade_index,
+                        UpgradeId      = (uint)x.upgrade_id,
+                        Category       = (uint)x.category,
+                        StatValue      = x.stat_value,
+                        Count          = x.count.HasValue ? (uint?)x.count.Value : null,
+                        ItemSdbId      = x.item_sdb_id.HasValue ? (uint?)x.item_sdb_id.Value : null,
+                        LocalizationId = (uint)x.localization_id
+                    }).ToList()
+                });
+            }
+
+            return resp;
+        }
+
         public async ValueTask<TransferCharacterResp> TransferCharacter(TransferCharacterReq req)
         {
             var saved = await Db.UpdateCharacterAfterGameSession((long)req.CharacterId, (int)req.ZoneId, (int)req.OutpostId, (int)req.TimePlayed);
@@ -306,6 +346,33 @@ namespace RIN.InternalAPI.Services
                             break;
                         case SaveCurrentBattleframe bf:
                             await Db.SetCharacterCurrentBattleframeBySdbId((long)bf.CharacterGuid, bf.ChassisId);
+                            break;
+                        case SaveBattleframeXp xp:
+                            await Db.UpdateBattleframeXp((long)xp.CharacterGuid, (int)xp.BattleframeSdbId, (int)xp.Level, (long)xp.CurrentXp, (long)xp.LifetimeXp);
+                            break;
+                        case SaveBattleframeEliteXp xp:
+                            await Db.UpdateBattleframeEliteXp((long)xp.CharacterGuid, (int)xp.BattleframeSdbId, (int)xp.EliteLevel, (long)xp.CurrentEliteXp, (long)xp.LifetimeEliteXp, (int)xp.ElitePoints);
+                            break;
+                        case SaveBattleframeUpgrade upgrade:
+                            await Db.SaveBattleframeUpgrade((long)upgrade.CharacterGuid, (int)upgrade.BattleframeSdbId, (int)upgrade.UpgradeId, (int)upgrade.Count);
+                            break;
+                        case ClearBattleframeUpgrades clear:
+                            await Db.ClearBattleframeUpgrades((long)clear.CharacterGuid, (int)clear.BattleframeSdbId);
+                            break;
+                        case SaveBattleframeAvailableUpgrades rolled:
+                            await Db.SaveBattleframeAvailableUpgrades(
+                                (long)rolled.CharacterGuid,
+                                (int)rolled.BattleframeSdbId,
+                                rolled.Upgrades?.Select(x => new BattleframeAvailableUpgradeRow
+                                {
+                                    upgrade_index   = (int)x.UpgradeIndex,
+                                    upgrade_id      = (int)x.UpgradeId,
+                                    category        = (int)x.Category,
+                                    stat_value      = x.StatValue,
+                                    count           = x.Count.HasValue ? (int?)x.Count.Value : null,
+                                    item_sdb_id     = x.ItemSdbId.HasValue ? (int?)x.ItemSdbId.Value : null,
+                                    localization_id = (int)x.LocalizationId
+                                }).ToList() ?? new List<BattleframeAvailableUpgradeRow>());
                             break;
                     }
                 }
