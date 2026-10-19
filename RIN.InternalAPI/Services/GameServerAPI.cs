@@ -85,6 +85,7 @@ namespace RIN.InternalAPI.Services
                     CurrentEliteXp   = (ulong)battleframe.current_elite_xp,
                     LifetimeEliteXp  = (ulong)battleframe.lifetime_elite_xp,
                     ElitePoints      = (uint)battleframe.elite_points,
+                    Bandwidth        = (uint)battleframe.bandwidth,
                     PreviousUpgrades = battleframe.previous_upgrades.Select(x => new BattleframeUpgradeEntry
                     {
                         UpgradeId = (uint)x.upgrade_id,
@@ -165,6 +166,16 @@ namespace RIN.InternalAPI.Services
                     ConfigId  = (uint)slot.config_id,
                     SlotIndex = (uint)slot.slot_index,
                     ItemGuid  = slot.item_guid,
+                });
+            }
+
+            foreach (var perk in dbInventory.perks)
+            {
+                resp.LoadoutPerks.Add(new CharacterLoadoutPerkEntry
+                {
+                    LoadoutId     = perk.loadout_id,
+                    PerkItemSdbId = (uint)perk.perk_item_sdb_id,
+                    Level         = (uint)perk.level,
                 });
             }
 
@@ -377,6 +388,21 @@ namespace RIN.InternalAPI.Services
                                     item_sdb_id     = x.ItemSdbId.HasValue ? (int?)x.ItemSdbId.Value : null,
                                     localization_id = (int)x.LocalizationId
                                 }).ToList() ?? new List<BattleframeAvailableUpgradeRow>());
+                            break;
+                        case SaveLoadoutPerk perk:
+                            await Db.SaveLoadoutPerk(
+                                (long)perk.CharacterGuid,
+                                perk.LoadoutId,
+                                (int)perk.PerkItemSdbId,
+                                (short)perk.Level);
+                            await Db.NotifyInventoryUpdated((long)perk.CharacterGuid);
+                            break;
+                        case DeleteLoadoutPerk delPerk:
+                            await Db.DeleteLoadoutPerk((long)delPerk.CharacterGuid, delPerk.LoadoutId, (int)delPerk.PerkItemSdbId);
+                            await Db.NotifyInventoryUpdated((long)delPerk.CharacterGuid);
+                            break;
+                        case SaveBattleframeBandwidth bandwidth:
+                            await Db.UpdateBattleframeBandwidth((long)bandwidth.CharacterGuid, (int)bandwidth.BattleframeSdbId, (int)bandwidth.Bandwidth);
                             break;
                     }
                 }

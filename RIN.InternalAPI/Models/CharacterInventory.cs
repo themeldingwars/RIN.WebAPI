@@ -9,6 +9,7 @@ namespace RIN.InternalAPI.Models
         [ProtoMember(2)] public List<CharacterResource> Resources { get; set; } = new();
         [ProtoMember(3)] public List<CharacterLoadout> Loadouts { get; set; } = new();
         [ProtoMember(4)] public List<CharacterLoadoutSlotEntry> Slots { get; set; } = new();
+        [ProtoMember(5)] public List<CharacterLoadoutPerkEntry> LoadoutPerks { get; set; } = new();
     }
 
     [ProtoContract]
@@ -44,6 +45,14 @@ namespace RIN.InternalAPI.Models
         [ProtoMember(2)] public int ChassisId { get; set; }
         [ProtoMember(3)] public string LoadoutName { get; set; } = string.Empty;
         [ProtoMember(4)] public string LoadoutType { get; set; } = string.Empty;
+    }
+
+    [ProtoContract]
+    public class CharacterLoadoutPerkEntry
+    {
+        [ProtoMember(1)] public int LoadoutId { get; set; }
+        [ProtoMember(2)] public uint PerkItemSdbId { get; set; }
+        [ProtoMember(3)] public uint Level { get; set; }
     }
 
     [ProtoContract]

@@ -24,6 +24,9 @@ namespace RIN.InternalAPI.Models
     [ProtoInclude(18, typeof(ClearBattleframeUpgrades))]
     [ProtoInclude(19, typeof(SaveBattleframeAvailableUpgrades))]
     [ProtoInclude(20, typeof(SeedCharacterFromTemplate))]
+    [ProtoInclude(21, typeof(SaveLoadoutPerk))]
+    [ProtoInclude(22, typeof(DeleteLoadoutPerk))]
+    [ProtoInclude(23, typeof(SaveBattleframeBandwidth))]
     public abstract class Command;
 
     [ProtoContract]
@@ -239,5 +242,30 @@ namespace RIN.InternalAPI.Models
         [ProtoMember(1)] public ulong CharacterGuid { get; set; }
         [ProtoMember(2)] public uint BattleframeSdbId { get; set; }
         [ProtoMember(3)] public List<BattleframeAvailableUpgradeEntry> Upgrades { get; set; } = new();
+    }
+
+    [ProtoContract]
+    public class SaveLoadoutPerk : Command
+    {
+        [ProtoMember(1)] public ulong CharacterGuid { get; set; }
+        [ProtoMember(2)] public int LoadoutId { get; set; }
+        [ProtoMember(3)] public uint PerkItemSdbId { get; set; }
+        [ProtoMember(4)] public uint Level { get; set; }
+    }
+
+    [ProtoContract]
+    public class DeleteLoadoutPerk : Command
+    {
+        [ProtoMember(1)] public ulong CharacterGuid { get; set; }
+        [ProtoMember(2)] public int LoadoutId { get; set; }
+        [ProtoMember(3)] public uint PerkItemSdbId { get; set; }
+    }
+
+    [ProtoContract]
+    public class SaveBattleframeBandwidth : Command
+    {
+        [ProtoMember(1)] public ulong CharacterGuid { get; set; }
+        [ProtoMember(2)] public uint BattleframeSdbId { get; set; }
+        [ProtoMember(3)] public uint Bandwidth { get; set; }
     }
 }

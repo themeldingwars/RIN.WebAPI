@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 9IgcnyeWTWmIIhfi7Uh4PFJ5sSlQzdFu4GWsZC0JXbdm3lUjNnumKKdssLBy39k
+\restrict JoOXdbrZaMpokhhA6icJUaCrPORNlpOLRBHnUp2TIpHeNEi6K3lQLIYW7ABLcqj
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -485,10 +485,17 @@ CREATE FUNCTION webapi.build_template_from_char_create(p_template_name text, p_b
     AS $$
 declare
     v_template_id integer;
+    v_bandwidth   integer;
 BEGIN
     IF p_battleframe_level < 1 THEN
         RAISE EXCEPTION 'build_template_from_char_create: battleframe level must be at least 1';
     END IF;
+
+    -- What the frame's level buys in perk points. PIN recomputes this at runtime; the template only
+    -- needs a starting value that matches the level the template is built for.
+    v_bandwidth := coalesce((SELECT sum(fpl.perk_points_gain)
+                             FROM sdb."dbitems::FrameProgressionLevel" fpl
+                             WHERE fpl.level <= p_battleframe_level), 0);
 
     INSERT INTO webapi."NewCharacterTemplates" (name, is_default, description)
     VALUES (p_template_name, false, 'Built from sdb dbcharacter::CharCreateLoadout (default_pve_module)')
@@ -496,6 +503,7 @@ BEGIN
         SET description = EXCLUDED.description
     RETURNING template_id INTO v_template_id;
 
+    DELETE FROM webapi."NewCharacterTemplateLoadoutPerks"  WHERE template_id = v_template_id;
     DELETE FROM webapi."NewCharacterTemplateLoadoutSlots" WHERE template_id = v_template_id;
     DELETE FROM webapi."NewCharacterTemplateItemModules"  WHERE template_id = v_template_id;
     DELETE FROM webapi."NewCharacterTemplateLoadouts"     WHERE template_id = v_template_id;
@@ -520,8 +528,8 @@ BEGIN
              c.is_starting_loadout DESC,
              c.id;
 
-    INSERT INTO webapi."NewCharacterTemplateBattleframes" (template_id, battleframe_sdb_id, level)
-    SELECT v_template_id, frame_id, p_battleframe_level
+    INSERT INTO webapi."NewCharacterTemplateBattleframes" (template_id, battleframe_sdb_id, level, bandwidth)
+    SELECT v_template_id, frame_id, p_battleframe_level, v_bandwidth
     FROM _build_frames;
 
     INSERT INTO webapi."NewCharacterTemplateLoadouts" (template_id, template_loadout_id, chassis_id, loadout_name, loadout_type)
@@ -559,6 +567,9 @@ BEGIN
     JOIN webapi."NewCharacterTemplateLoadouts" l
       ON l.template_id = v_template_id AND l.chassis_id = b.frame_id;
 
+    -- No perks: sdb dbcharacter::CharCreateLoadoutPerks lists what a frame unlocks at each level, not
+    -- what is slotted. Which of those the player picks is not something a template can decide.
+
     DROP TABLE IF EXISTS _build_slots;
     DROP TABLE IF EXISTS _build_frames;
 
@@ -573,7 +584,7 @@ ALTER FUNCTION webapi.build_template_from_char_create(p_template_name text, p_ba
 -- Name: FUNCTION build_template_from_char_create(p_template_name text, p_battleframe_level integer, p_frames integer[], p_allow_pvp_fallback boolean); Type: COMMENT; Schema: webapi; Owner: tmwadmin
 --
 
-COMMENT ON FUNCTION webapi.build_template_from_char_create(p_template_name text, p_battleframe_level integer, p_frames integer[], p_allow_pvp_fallback boolean) IS 'Builds a seeding template from sdb dbcharacter::CharCreateLoadout. Slots whose LoadoutSlot.level_requirement is above p_battleframe_level are skipped, along with slots whose default_pve_module is 0.';
+COMMENT ON FUNCTION webapi.build_template_from_char_create(p_template_name text, p_battleframe_level integer, p_frames integer[], p_allow_pvp_fallback boolean) IS 'Builds a seeding template from sdb dbcharacter::CharCreateLoadout. Slots above LoadoutSlot.level_requirement are skipped, as are slots with a zero default_pve_module. Bandwidth is set from cumulative dbitems::FrameProgressionLevel.perk_points_gain. No perks are seeded: CharCreateLoadoutPerks is an unlock list, not an equipped set.';
 
 
 --
@@ -915,6 +926,11 @@ BEGIN
     JOIN _seed_loadout_map lm USING (template_id, template_loadout_id)
     JOIN _seed_item_map im USING (template_id, template_item_id);
 
+    INSERT INTO webapi."CharacterLoadoutPerks" (loadout_id, perk_item_sdb_id, level)
+    SELECT lm.loadout_id, p.perk_item_sdb_id, p.level
+    FROM webapi."NewCharacterTemplateLoadoutPerks" p
+    JOIN _seed_loadout_map lm USING (template_id, template_loadout_id);
+
     -- One progression row per chassis. Frames the character already has keep their progression.
     INSERT INTO webapi."Battleframes" (id,
                                        character_guid,
@@ -927,7 +943,8 @@ BEGIN
                                        elite_level,
                                        current_elite_xp,
                                        lifetime_elite_xp,
-                                       elite_points)
+                                       elite_points,
+                                       bandwidth)
     SELECT webapi.create_entity_guid(253),
            char_guid,
            b.battleframe_sdb_id,
@@ -939,7 +956,8 @@ BEGIN
            b.elite_level,
            0,
            0,
-           b.elite_points
+           b.elite_points,
+           b.bandwidth
     FROM webapi."NewCharacterTemplateBattleframes" b
     WHERE b.template_id = v_template_id
     ON CONFLICT (character_guid, battleframe_sdb_id) DO NOTHING;
@@ -961,6 +979,7 @@ BEGIN
         RAISE EXCEPTION 'snapshot_inventory_as_template: no template %', p_template_id;
     END IF;
 
+    DELETE FROM webapi."NewCharacterTemplateLoadoutPerks"  WHERE template_id = p_template_id;
     DELETE FROM webapi."NewCharacterTemplateLoadoutSlots" WHERE template_id = p_template_id;
     DELETE FROM webapi."NewCharacterTemplateItemModules"  WHERE template_id = p_template_id;
     DELETE FROM webapi."NewCharacterTemplateLoadouts"     WHERE template_id = p_template_id;
@@ -997,8 +1016,14 @@ BEGIN
     JOIN (SELECT item_guid, row_number() OVER (ORDER BY item_guid) AS template_item_id
           FROM webapi."CharacterItems" WHERE character_guid = char_guid) im USING (item_guid);
 
-    INSERT INTO webapi."NewCharacterTemplateBattleframes" (template_id, battleframe_sdb_id, level, elite_level, elite_points, hidden, visuals)
-    SELECT p_template_id, battleframe_sdb_id, level, elite_level, elite_points, hidden, visuals
+    INSERT INTO webapi."NewCharacterTemplateLoadoutPerks" (template_id, template_loadout_id, perk_item_sdb_id, level)
+    SELECT p_template_id, lm.template_loadout_id, k.perk_item_sdb_id, k.level
+    FROM webapi."CharacterLoadoutPerks" k
+    JOIN (SELECT loadout_id, row_number() OVER (ORDER BY loadout_id) AS template_loadout_id
+          FROM webapi."CharacterLoadouts" WHERE character_guid = char_guid) lm USING (loadout_id);
+
+    INSERT INTO webapi."NewCharacterTemplateBattleframes" (template_id, battleframe_sdb_id, level, elite_level, elite_points, hidden, visuals, bandwidth)
+    SELECT p_template_id, battleframe_sdb_id, level, elite_level, elite_points, hidden, visuals, bandwidth
     FROM webapi."Battleframes"
     WHERE character_guid = char_guid;
 END
@@ -1242,11 +1267,19 @@ CREATE TABLE webapi."Battleframes" (
     elite_level integer DEFAULT 0 NOT NULL,
     current_elite_xp bigint DEFAULT 0 NOT NULL,
     lifetime_elite_xp bigint DEFAULT 0 NOT NULL,
-    elite_points integer DEFAULT 0 NOT NULL
+    elite_points integer DEFAULT 0 NOT NULL,
+    bandwidth integer DEFAULT 0 NOT NULL
 );
 
 
 ALTER TABLE webapi."Battleframes" OWNER TO tmwadmin;
+
+--
+-- Name: COLUMN "Battleframes".bandwidth; Type: COMMENT; Schema: webapi; Owner: tmwadmin
+--
+
+COMMENT ON COLUMN webapi."Battleframes".bandwidth IS 'Perk point budget for this battleframe, shared by all of its loadouts. PIN computes it on level up and writes it; RIN stores it and never validates perk totals or the 10 perk cap against it.';
+
 
 --
 -- Name: Battleframes_id_seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
@@ -1291,6 +1324,41 @@ CREATE TABLE webapi."CharacterItems" (
 
 
 ALTER TABLE webapi."CharacterItems" OWNER TO tmwadmin;
+
+--
+-- Name: CharacterLoadoutPerks; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."CharacterLoadoutPerks" (
+    id bigint NOT NULL,
+    loadout_id integer NOT NULL,
+    perk_item_sdb_id integer NOT NULL,
+    level smallint DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE webapi."CharacterLoadoutPerks" OWNER TO tmwadmin;
+
+--
+-- Name: TABLE "CharacterLoadoutPerks"; Type: COMMENT; Schema: webapi; Owner: tmwadmin
+--
+
+COMMENT ON TABLE webapi."CharacterLoadoutPerks" IS 'Perk modules the player has slotted into a loadout. Identified by sdb id (dbitems::PerkModule.id), not by guid. PIN enforces the 10 perk cap and the frame bandwidth.';
+
+
+--
+-- Name: CharacterLoadoutPerks_id_seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE webapi."CharacterLoadoutPerks" ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME webapi."CharacterLoadoutPerks_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
 
 --
 -- Name: CharacterLoadoutSlots; Type: TABLE; Schema: webapi; Owner: tmwadmin
@@ -1590,6 +1658,7 @@ CREATE TABLE webapi."NewCharacterTemplateBattleframes" (
     elite_points integer DEFAULT 0 NOT NULL,
     hidden boolean DEFAULT false NOT NULL,
     visuals bytea DEFAULT '\x1089081884c2fcff0f188080cce609188080988c03188080a4d20418aef7c9a50918c1e280e40c18c1e280e40c'::bytea NOT NULL,
+    bandwidth integer DEFAULT 0 NOT NULL,
     CONSTRAINT template_battleframes_level_check CHECK ((level >= 1))
 );
 
@@ -1632,6 +1701,20 @@ CREATE TABLE webapi."NewCharacterTemplateItems" (
 
 
 ALTER TABLE webapi."NewCharacterTemplateItems" OWNER TO tmwadmin;
+
+--
+-- Name: NewCharacterTemplateLoadoutPerks; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."NewCharacterTemplateLoadoutPerks" (
+    template_id integer NOT NULL,
+    template_loadout_id integer NOT NULL,
+    perk_item_sdb_id integer NOT NULL,
+    level smallint DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE webapi."NewCharacterTemplateLoadoutPerks" OWNER TO tmwadmin;
 
 --
 -- Name: NewCharacterTemplateLoadoutSlots; Type: TABLE; Schema: webapi; Owner: tmwadmin
@@ -1982,6 +2065,22 @@ ALTER TABLE ONLY webapi."CharacterItems"
 
 
 --
+-- Name: CharacterLoadoutPerks CharacterLoadoutPerks_loadout_perk_key; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterLoadoutPerks"
+    ADD CONSTRAINT "CharacterLoadoutPerks_loadout_perk_key" UNIQUE (loadout_id, perk_item_sdb_id);
+
+
+--
+-- Name: CharacterLoadoutPerks CharacterLoadoutPerks_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterLoadoutPerks"
+    ADD CONSTRAINT "CharacterLoadoutPerks_pkey" PRIMARY KEY (id);
+
+
+--
 -- Name: CharacterLoadoutSlots CharacterLoadoutSlots_loadout_id_config_id_slot_index_key; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -2091,6 +2190,14 @@ ALTER TABLE ONLY webapi."NewCharacterTemplateItemModules"
 
 ALTER TABLE ONLY webapi."NewCharacterTemplateItems"
     ADD CONSTRAINT "NewCharacterTemplateItems_pkey" PRIMARY KEY (template_id, template_item_id);
+
+
+--
+-- Name: NewCharacterTemplateLoadoutPerks NewCharacterTemplateLoadoutPerks_pkey; Type: CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."NewCharacterTemplateLoadoutPerks"
+    ADD CONSTRAINT "NewCharacterTemplateLoadoutPerks_pkey" PRIMARY KEY (template_id, template_loadout_id, perk_item_sdb_id);
 
 
 --
@@ -2418,6 +2525,14 @@ ALTER TABLE ONLY webapi."Battleframes"
 
 
 --
+-- Name: CharacterLoadoutPerks CharacterLoadoutPerks_loadout_id_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterLoadoutPerks"
+    ADD CONSTRAINT "CharacterLoadoutPerks_loadout_id_fkey" FOREIGN KEY (loadout_id) REFERENCES webapi."CharacterLoadouts"(loadout_id) ON DELETE CASCADE;
+
+
+--
 -- Name: LeaderboardEntries LeaderboardEntries_character_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -2538,6 +2653,14 @@ ALTER TABLE ONLY webapi."NewCharacterTemplateItems"
 
 
 --
+-- Name: NewCharacterTemplateLoadoutPerks template_loadout_perks_loadout_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."NewCharacterTemplateLoadoutPerks"
+    ADD CONSTRAINT template_loadout_perks_loadout_fkey FOREIGN KEY (template_id, template_loadout_id) REFERENCES webapi."NewCharacterTemplateLoadouts"(template_id, template_loadout_id) ON DELETE CASCADE;
+
+
+--
 -- Name: NewCharacterTemplateLoadoutSlots template_loadout_slots_item_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -2581,5 +2704,5 @@ ALTER TABLE ONLY webapi."VipData"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 9IgcnyeWTWmIIhfi7Uh4PFJ5sSlQzdFu4GWsZC0JXbdm3lUjNnumKKdssLBy39k
+\unrestrict JoOXdbrZaMpokhhA6icJUaCrPORNlpOLRBHnUp2TIpHeNEi6K3lQLIYW7ABLcqj
 

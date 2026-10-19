@@ -5,7 +5,7 @@ namespace RIN.Core.DB
 {
     public partial class DB
     {
-        public async Task<(List<InventoryItemRow> items, List<InventoryResourceRow> resources, List<InventoryLoadoutRow> loadouts, List<InventoryLoadoutSlotRow> slots)> GetCharacterInventory(long charGuid)
+        public async Task<(List<InventoryItemRow> items, List<InventoryResourceRow> resources, List<InventoryLoadoutRow> loadouts, List<InventoryLoadoutSlotRow> slots, List<InventoryLoadoutPerkRow> perks)> GetCharacterInventory(long charGuid)
         {
             const string SQL = @"
                 SELECT item_guid, sdb_id, sub_inventory, dynamic_flags, durability
@@ -28,6 +28,11 @@ namespace RIN.Core.DB
                 SELECT s.loadout_id, s.config_id, s.slot_index, s.item_guid
                 FROM webapi.""CharacterLoadoutSlots"" s
                 INNER JOIN webapi.""CharacterLoadouts"" l ON s.loadout_id = l.loadout_id
+                WHERE l.character_guid = @charGuid;
+
+                SELECT k.loadout_id, k.perk_item_sdb_id, k.level
+                FROM webapi.""CharacterLoadoutPerks"" k
+                INNER JOIN webapi.""CharacterLoadouts"" l ON k.loadout_id = l.loadout_id
                 WHERE l.character_guid = @charGuid;";
 
             var result = await DBCall(async conn =>
@@ -38,6 +43,7 @@ namespace RIN.Core.DB
                 var resources = (await multi.ReadAsync<InventoryResourceRow>()).ToList();
                 var loadouts = (await multi.ReadAsync<InventoryLoadoutRow>()).ToList();
                 var slots = (await multi.ReadAsync<InventoryLoadoutSlotRow>()).ToList();
+                var perks = (await multi.ReadAsync<InventoryLoadoutPerkRow>()).ToList();
 
                 var modulesByItem = itemModules.GroupBy(m => m.item_guid).ToDictionary(g => g.Key, g => g.ToList());
                 var slottedItems  = new HashSet<long>(slots.Select(s => s.item_guid));
@@ -52,7 +58,7 @@ namespace RIN.Core.DB
                         item.dynamic_flags |= (short) ItemDynamicFlags.IsEquipped;
                 }
 
-                return (items, resources, loadouts, slots);
+                return (items, resources, loadouts, slots, perks);
             });
 
             return result;
@@ -179,6 +185,38 @@ namespace RIN.Core.DB
         var affected = await DBCall(conn => conn.ExecuteAsync(DELETE_SQL, new { characterGuid, loadoutId, configId, slotIndex }));
         return affected > 0;
     }
+
+        /// <summary>
+        /// Slots a perk module in a loadout.
+        /// Unlike SaveLoadoutSlot this one is scoped to the character.
+        /// </summary>
+        public async Task<bool> SaveLoadoutPerk(long characterGuid, int loadoutId, int perkItemSdbId, short level)
+        {
+            const string UPSERT_SQL = @"INSERT INTO webapi.""CharacterLoadoutPerks"" (loadout_id, perk_item_sdb_id, level)
+                                        SELECT @loadoutId, @perkItemSdbId, @level
+                                        WHERE EXISTS (SELECT 1
+                                                      FROM webapi.""CharacterLoadouts""
+                                                      WHERE loadout_id = @loadoutId
+                                                        AND character_guid = @characterGuid)
+                                        ON CONFLICT (loadout_id, perk_item_sdb_id)
+                                        DO UPDATE SET level = EXCLUDED.level";
+
+            var affected = await DBCall(conn => conn.ExecuteAsync(UPSERT_SQL, new { loadoutId, perkItemSdbId, level, characterGuid }));
+            return affected > 0;
+        }
+
+        public async Task<bool> DeleteLoadoutPerk(long characterGuid, int loadoutId, int perkItemSdbId)
+        {
+            const string DELETE_SQL = @"DELETE FROM webapi.""CharacterLoadoutPerks"" k
+                                        USING webapi.""CharacterLoadouts"" l
+                                        WHERE k.loadout_id = l.loadout_id
+                                          AND l.character_guid = @characterGuid
+                                          AND k.loadout_id = @loadoutId
+                                          AND k.perk_item_sdb_id = @perkItemSdbId";
+
+            var affected = await DBCall(conn => conn.ExecuteAsync(DELETE_SQL, new { characterGuid, loadoutId, perkItemSdbId }));
+            return affected > 0;
+        }
 
     public async Task<bool> SeedCharacterInventory(long characterGuid, List<InventorySeedItem> items, List<InventorySeedResource> resources, List<InventorySeedLoadout> loadouts, List<InventorySeedLoadoutSlot> slots)
         {
@@ -413,6 +451,13 @@ namespace RIN.Core.DB
         public int chassis_id { get; set; }
         public string loadout_name { get; set; } = string.Empty;
         public string loadout_type { get; set; } = string.Empty;
+    }
+
+    public class InventoryLoadoutPerkRow
+    {
+        public int loadout_id { get; set; }
+        public int perk_item_sdb_id { get; set; }
+        public short level { get; set; }
     }
 
     public class InventoryLoadoutSlotRow

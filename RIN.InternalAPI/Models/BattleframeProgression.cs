@@ -22,6 +22,7 @@ namespace RIN.InternalAPI.Models
         [ProtoMember(9)] public uint ElitePoints { get; set; }
         [ProtoMember(10)] public List<BattleframeUpgradeEntry> PreviousUpgrades { get; set; } = new();
         [ProtoMember(11)] public List<BattleframeAvailableUpgradeEntry> AvailableUpgrades { get; set; } = new();
+        [ProtoMember(12)] public uint Bandwidth { get; set; }
     }
 
     [ProtoContract]

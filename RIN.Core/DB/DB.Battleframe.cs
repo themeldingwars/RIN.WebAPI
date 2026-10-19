@@ -98,7 +98,7 @@ namespace RIN.Core.DB
         {
             const string SQL = @"
                 SELECT id, battleframe_sdb_id, level, current_xp, lifetime_xp,
-                       elite_level, current_elite_xp, lifetime_elite_xp, elite_points
+                       elite_level, current_elite_xp, lifetime_elite_xp, elite_points, bandwidth
                 FROM webapi.""Battleframes""
                 WHERE character_guid = @characterGuid
                 ORDER BY battleframe_sdb_id;
@@ -163,6 +163,21 @@ namespace RIN.Core.DB
 		                          AND battleframe_sdb_id = @battleframeSdbId";
 
             var affected = await DBCall(conn => conn.ExecuteAsync(UPDATE_SQL, new { characterGuid, battleframeSdbId, eliteLevel, currentEliteXp, lifetimeEliteXp, elitePoints }));
+            return affected > 0;
+        }
+
+        /// <summary>
+        /// Sets a battleframe's perk point budget, shared by every loadout of that chassis. PIN computes
+        /// the number; RIN stores it and validates nothing against it.
+        /// </summary>
+        public async Task<bool> UpdateBattleframeBandwidth(long characterGuid, int battleframeSdbId, int bandwidth)
+        {
+            const string UPDATE_SQL = @"UPDATE webapi.""Battleframes""
+		                        SET bandwidth = @bandwidth
+		                        WHERE character_guid     = @characterGuid
+		                          AND battleframe_sdb_id = @battleframeSdbId";
+
+            var affected = await DBCall(conn => conn.ExecuteAsync(UPDATE_SQL, new { characterGuid, battleframeSdbId, bandwidth }));
             return affected > 0;
         }
 
@@ -388,6 +403,7 @@ namespace RIN.Core.DB
         public long current_elite_xp { get; set; }
         public long lifetime_elite_xp { get; set; }
         public int elite_points { get; set; }
+        public int bandwidth { get; set; }
         public List<BattleframePreviousUpgradeRow> previous_upgrades { get; set; } = new();
         public List<BattleframeAvailableUpgradeRow> available_upgrades { get; set; } = new();
     }
