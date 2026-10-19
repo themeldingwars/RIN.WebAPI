@@ -370,5 +370,38 @@ namespace RIN.Core.DB
 
             return results;
         }
+
+        public async Task<IEnumerable<(string unlockType, int unlockId, int frameId)>> GetCharacterUnlocks(long characterGuid)
+        {
+            const string SELECT_SQL = @"SELECT unlock_type, unlock_id, frame_id
+                                        FROM webapi.""CharacterUnlocks""
+                                        WHERE character_guid = @characterGuid";
+
+            return await DBCall(async conn => await conn.QueryAsync<(string unlockType, int unlockId, int frameId)>(SELECT_SQL, new { characterGuid }))
+                ?? Enumerable.Empty<(string unlockType, int unlockId, int frameId)>();
+        }
+
+        public async Task<bool> UpsertCharacterUnlock(long characterGuid, string unlockType, int unlockId, int frameId)
+        {
+            const string UPSERT_SQL = @"INSERT INTO webapi.""CharacterUnlocks"" (character_guid, unlock_type, unlock_id, frame_id)
+                                        VALUES (@characterGuid, @unlockType, @unlockId, @frameId)
+                                        ON CONFLICT (character_guid, unlock_type, unlock_id, frame_id)
+                                        DO NOTHING";
+
+            var affected = await DBCall(conn => conn.ExecuteAsync(UPSERT_SQL, new { characterGuid, unlockType, unlockId, frameId }));
+            return affected >= 0;
+        }
+
+        public async Task<bool> DeleteCharacterUnlock(long characterGuid, string unlockType, int unlockId, int frameId)
+        {
+            const string DELETE_SQL = @"DELETE FROM webapi.""CharacterUnlocks""
+                                        WHERE character_guid = @characterGuid
+                                          AND unlock_type    = @unlockType
+                                          AND unlock_id      = @unlockId
+                                          AND frame_id       = @frameId";
+
+            var affected = await DBCall(conn => conn.ExecuteAsync(DELETE_SQL, new { characterGuid, unlockType, unlockId, frameId }));
+            return affected > 0;
+        }
     }
 }

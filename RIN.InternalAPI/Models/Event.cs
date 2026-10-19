@@ -16,6 +16,8 @@ namespace RIN.InternalAPI.Models
     [ProtoInclude(11, typeof(ArmyRanksUpdated))]
     [ProtoInclude(12, typeof(ArmyTagUpdated))]
     [ProtoInclude(13, typeof(CharacterVisualsUpdated))]
+    // 14 is taken by InventoryUpdated in the inventory PR; keep numbering stable across the stack
+    [ProtoInclude(15, typeof(UnlocksUpdated))]
     public abstract class Event;
 
     [ProtoContract]
@@ -109,5 +111,11 @@ namespace RIN.InternalAPI.Models
     {
         [ProtoMember(1)] public ulong                          CharacterGuid                  { get; set; }
         [ProtoMember(2)] public CharacterAndBattleframeVisuals CharacterAndBattleframeVisuals { get; set; }
+    }
+
+    [ProtoContract]
+    public class UnlocksUpdated : Event
+    {
+        [ProtoMember(1)] public ulong CharacterGuid { get; set; }
     }
 }

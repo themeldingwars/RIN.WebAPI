@@ -1,6 +1,7 @@
 ﻿using System.Threading.Channels;
 using ProtoBuf.Grpc;
 using RIN.Core.DB;
+using RIN.Core.Models.DB;
 using RIN.InternalAPI.Models;
 
 namespace RIN.InternalAPI.Services
@@ -42,6 +43,25 @@ namespace RIN.InternalAPI.Services
                 CharacterVisuals   = result.visuals,
                 BattleframeVisuals = bfVisuals
             };
+
+            return resp;
+        }
+
+        public async ValueTask<CharacterUnlocksResponse> GetCharacterUnlocks(CharacterID req)
+        {
+            var dbUnlocks = await Db.GetCharacterUnlocks(req.ID);
+
+            var resp = new CharacterUnlocksResponse();
+
+            foreach (var unlock in dbUnlocks)
+            {
+                resp.Unlocks.Add(new CharacterUnlockEntry
+                {
+                    UnlockType = unlock.unlockType,
+                    UnlockId   = (uint)unlock.unlockId,
+                    FrameId    = (uint)unlock.frameId
+                });
+            }
 
             return resp;
         }
@@ -108,6 +128,12 @@ namespace RIN.InternalAPI.Services
                             break;
                         case SaveLgvRaceFinish race:
                             await Db.SaveLgvRaceFinish((long)race.CharacterGuid, (int)race.LeaderboardId, (long)race.TimeMs);
+                            break;
+                        case SaveCharacterUnlock unlock:
+                            await Db.UpsertCharacterUnlock((long)unlock.CharacterGuid, unlock.UnlockType, (int)unlock.UnlockId, (int)unlock.FrameId);
+                            break;
+                        case DeleteCharacterUnlock unlock:
+                            await Db.DeleteCharacterUnlock((long)unlock.CharacterGuid, unlock.UnlockType, (int)unlock.UnlockId, (int)unlock.FrameId);
                             break;
                     }
                 }

@@ -93,15 +93,31 @@ message CharacterVisuals {
    WebId glider = 16;
    WebId vehicle = 17;
 }
+message CharacterUnlockEntry {
+    string UnlockType = 1;
+    uint32 UnlockId = 2;
+    uint32 FrameId = 3;
+}
+message CharacterUnlocksResponse {
+    repeated CharacterUnlockEntry Unlocks = 1;
+}
 message CharacterVisualsUpdated {
-   uint64 CharacterGuid = 1;
-   CharacterAndBattleframeVisuals CharacterAndBattleframeVisuals = 2;
+    uint64 CharacterGuid = 1;
+    CharacterAndBattleframeVisuals CharacterAndBattleframeVisuals = 2;
 }
 message Command {
-   oneof subtype {
-      SaveGameSessionData SaveGameSessionData = 1;
-      SaveLgvRaceFinish SaveLgvRaceFinish = 2;
-   }
+    oneof subtype {
+       SaveGameSessionData SaveGameSessionData = 1;
+       SaveLgvRaceFinish SaveLgvRaceFinish = 2;
+       SaveCharacterUnlock SaveCharacterUnlock = 3;
+       DeleteCharacterUnlock DeleteCharacterUnlock = 14;
+    }
+}
+message DeleteCharacterUnlock {
+    uint64 CharacterGuid = 1;
+    string UnlockType = 2;
+    uint32 UnlockId = 3;
+    uint32 FrameId = 4;
 }
 message Event {
    oneof subtype {
@@ -118,6 +134,7 @@ message Event {
       ArmyRanksUpdated ArmyRanksUpdated = 11;
       ArmyTagUpdated ArmyTagUpdated = 12;
       CharacterVisualsUpdated CharacterVisualsUpdated = 13;
+      UnlocksUpdated UnlocksUpdated = 15;
    }
 }
 message PingReq {
@@ -141,10 +158,16 @@ message SaveGameSessionData {
    uint32 OutpostId = 3;
    uint32 TimePlayed = 4;
 }
+message SaveCharacterUnlock {
+    uint64 CharacterGuid = 1;
+    string UnlockType = 2;
+    uint32 UnlockId = 3;
+    uint32 FrameId = 4;
+}
 message SaveLgvRaceFinish {
-   uint64 CharacterGuid = 1;
-   uint32 LeaderboardId = 2;
-   uint64 TimeMs = 3;
+    uint64 CharacterGuid = 1;
+    uint32 LeaderboardId = 2;
+    uint64 TimeMs = 3;
 }
 message TransferCharacterReq {
    uint64 CharacterId = 1;
@@ -154,6 +177,9 @@ message TransferCharacterReq {
 }
 message TransferCharacterResp {
    bool Success = 1;
+}
+message UnlocksUpdated {
+   uint64 CharacterGuid = 1;
 }
 message WebColor {
    uint32 color = 1;
@@ -180,6 +206,7 @@ message WebIdValueColorId {
 }
 service GameServerAPI {
    rpc GetCharacterAndBattleframeVisuals (CharacterID) returns (CharacterAndBattleframeVisuals);
+   rpc GetCharacterUnlocks (CharacterID) returns (CharacterUnlocksResponse);
    rpc Ping (PingReq) returns (PingResp);
    rpc Stream (stream Command) returns (stream Event);
    rpc TransferCharacter (TransferCharacterReq) returns (TransferCharacterResp);

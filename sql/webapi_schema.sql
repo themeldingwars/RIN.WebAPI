@@ -713,6 +713,32 @@ $$;
 
 ALTER FUNCTION webapi.notify_on_character_events() OWNER TO tmwadmin;
 
+--
+-- Name: notify_on_unlock_events(); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE FUNCTION webapi.notify_on_unlock_events() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    payload json;
+    char_guid bigint;
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        char_guid = OLD.character_guid;
+    ELSE
+        char_guid = NEW.character_guid;
+    END IF;
+
+    payload := json_build_object('CharacterGuid', char_guid);
+    PERFORM pg_notify('events', 'UnlocksUpdated->' || payload::text);
+    RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION webapi.notify_on_unlock_events() OWNER TO tmwadmin;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -960,6 +986,28 @@ CREATE TABLE webapi."Characters" (
 
 
 ALTER TABLE webapi."Characters" OWNER TO tmwadmin;
+
+--
+-- Name: CharacterUnlocks; Type: TABLE; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TABLE webapi."CharacterUnlocks" (
+    character_guid bigint NOT NULL,
+    unlock_type text NOT NULL,
+    unlock_id integer NOT NULL,
+    frame_id integer NOT NULL DEFAULT 0,
+    unlocked_at timestamp with time zone NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (character_guid, unlock_type, unlock_id, frame_id)
+);
+
+
+ALTER TABLE webapi."CharacterUnlocks" OWNER TO tmwadmin;
+
+--
+-- Name: idx_character_unlocks_character; Type: INDEX; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE INDEX idx_character_unlocks_character ON webapi."CharacterUnlocks" (character_guid);
 
 --
 -- Name: ClientEvents; Type: TABLE; Schema: webapi; Owner: tmwadmin
@@ -1587,6 +1635,13 @@ CREATE TRIGGER character_events_trigger AFTER UPDATE ON webapi."Characters" FOR 
 
 
 --
+-- Name: CharacterUnlocks character_unlock_events_trigger; Type: TRIGGER; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TRIGGER character_unlock_events_trigger AFTER INSERT OR DELETE ON webapi."CharacterUnlocks" FOR EACH ROW EXECUTE FUNCTION webapi.notify_on_unlock_events();
+
+
+--
 -- Name: ArmyApplications ArmyApplications_army_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
 --
 
@@ -1672,6 +1727,14 @@ ALTER TABLE ONLY webapi."ArmyMembers"
 
 ALTER TABLE ONLY webapi."VipData"
     ADD CONSTRAINT vipdata_accounts_account_id_fk FOREIGN KEY (account_id) REFERENCES webapi."Accounts"(account_id) ON DELETE CASCADE;
+
+
+--
+-- Name: CharacterUnlocks character_unlocks_character_guid_fkey; Type: FK CONSTRAINT; Schema: webapi; Owner: tmwadmin
+--
+
+ALTER TABLE ONLY webapi."CharacterUnlocks"
+    ADD CONSTRAINT character_unlocks_character_guid_fkey FOREIGN KEY (character_guid) REFERENCES webapi."Characters"(character_guid) ON DELETE CASCADE;
 
 
 --
