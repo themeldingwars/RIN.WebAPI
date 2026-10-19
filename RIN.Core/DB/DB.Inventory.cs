@@ -40,10 +40,16 @@ namespace RIN.Core.DB
                 var slots = (await multi.ReadAsync<InventoryLoadoutSlotRow>()).ToList();
 
                 var modulesByItem = itemModules.GroupBy(m => m.item_guid).ToDictionary(g => g.Key, g => g.ToList());
+                var slottedItems  = new HashSet<long>(slots.Select(s => s.item_guid));
+
                 foreach (var item in items)
                 {
                     if (modulesByItem.TryGetValue(item.item_guid, out var itemModuleList))
                         item.modules = itemModuleList;
+
+                    item.dynamic_flags = (short) (item.dynamic_flags & ~(int) ItemDynamicFlags.IsEquipped);
+                    if (slottedItems.Contains(item.item_guid))
+                        item.dynamic_flags |= (short) ItemDynamicFlags.IsEquipped;
                 }
 
                 return (items, resources, loadouts, slots);
@@ -54,6 +60,9 @@ namespace RIN.Core.DB
 
         public async Task<bool> SaveInventoryItem(long characterGuid, long itemGuid, int sdbId, short subInventory, short dynamicFlags, int durability, List<InventorySeedModule> modules)
         {
+            // IsEquipped is derived on read, so drop it here
+            dynamicFlags = (short) (dynamicFlags & ~(int) ItemDynamicFlags.IsEquipped);
+
             return await DBCall(async conn =>
             {
                 await using var tx = await conn.BeginTransactionAsync();
@@ -181,9 +190,10 @@ namespace RIN.Core.DB
                 {
                     foreach (var item in items)
                     {
+                        // Same rule as SaveInventoryItem: the IsEquipped bit is derived, not stored.
                         await conn.ExecuteAsync(@"INSERT INTO webapi.""CharacterItems"" (item_guid, character_guid, sdb_id, sub_inventory, dynamic_flags, durability)
                                                   VALUES (@itemGuid, @characterGuid, @sdbId, @subInventory, @dynamicFlags, @durability)",
-                            new { item.ItemGuid, characterGuid, item.SdbId, item.SubInventory, item.DynamicFlags, item.Durability }, tx);
+                            new { item.ItemGuid, characterGuid, item.SdbId, item.SubInventory, dynamicFlags = (short) (item.DynamicFlags & ~(int) ItemDynamicFlags.IsEquipped), item.Durability }, tx);
 
                         if (item.Modules != null && item.Modules.Any())
                         {
