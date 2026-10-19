@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict JoOXdbrZaMpokhhA6icJUaCrPORNlpOLRBHnUp2TIpHeNEi6K3lQLIYW7ABLcqj
+\restrict GQ9AYEHQKmchK9CWKRTGP8hSvrNkoKqjPTYJziL7fnKVRjchwBH1yJF37TbLPZd
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -303,6 +303,24 @@ $$;
 
 
 ALTER FUNCTION webapi."CreateNewCharacter"(account_id bigint, name text, is_dev boolean, voice_setid integer, gender integer, visuals bytea, template_id integer, OUT error_text text, OUT new_character_id bigint) OWNER TO tmwadmin;
+
+--
+-- Name: InvalidateLoginTicketOnPasswordChange(); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE FUNCTION webapi."InvalidateLoginTicketOnPasswordChange"() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    NEW.login_ticket            := NULL;
+    NEW.login_ticket_hash       := NULL;
+    NEW.login_ticket_created_at := NULL;
+    RETURN NEW;
+END
+$$;
+
+
+ALTER FUNCTION webapi."InvalidateLoginTicketOnPasswordChange"() OWNER TO tmwadmin;
 
 --
 -- Name: InviteToArmy(bigint, character varying, text, bigint); Type: FUNCTION; Schema: webapi; Owner: tmwadmin
@@ -1055,11 +1073,35 @@ CREATE TABLE webapi."Accounts" (
     email_optin boolean DEFAULT false NOT NULL,
     email_verified boolean DEFAULT false NOT NULL,
     rb_balance bigint NOT NULL,
-    language text
+    language text,
+    login_ticket bytea,
+    login_ticket_hash bytea,
+    login_ticket_created_at timestamp with time zone
 );
 
 
 ALTER TABLE webapi."Accounts" OWNER TO tmwadmin;
+
+--
+-- Name: COLUMN "Accounts".login_ticket; Type: COMMENT; Schema: webapi; Owner: tmwadmin
+--
+
+COMMENT ON COLUMN webapi."Accounts".login_ticket IS 'The 32 random bytes behind this account''s login ticket, after the "R5 " header is stripped and before base64. The oracle/ticket route hands the client base64("R5 " + these bytes); the client gives the game server the decoded payload and the game server passes those bytes back for validation.';
+
+
+--
+-- Name: COLUMN "Accounts".login_ticket_hash; Type: COMMENT; Schema: webapi; Owner: tmwadmin
+--
+
+COMMENT ON COLUMN webapi."Accounts".login_ticket_hash IS 'SHA-256 of login_ticket. Validation hashes the presented ticket and looks this up, so the comparison never touches the raw column. Unique: two accounts must never accept the same ticket.';
+
+
+--
+-- Name: COLUMN "Accounts".login_ticket_created_at; Type: COMMENT; Schema: webapi; Owner: tmwadmin
+--
+
+COMMENT ON COLUMN webapi."Accounts".login_ticket_created_at IS 'When the current ticket was minted. Cleared together with the ticket when the password or signing secret changes.';
+
 
 --
 -- Name: Accounts_account_id_seq; Type: SEQUENCE; Schema: webapi; Owner: tmwadmin
@@ -2357,6 +2399,13 @@ CREATE UNIQUE INDEX accounts_email_uindex ON webapi."Accounts" USING btree (emai
 
 
 --
+-- Name: accounts_login_ticket_hash_uindex; Type: INDEX; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE UNIQUE INDEX accounts_login_ticket_hash_uindex ON webapi."Accounts" USING btree (login_ticket_hash);
+
+
+--
 -- Name: accounts_uid_uindex; Type: INDEX; Schema: webapi; Owner: tmwadmin
 --
 
@@ -2424,6 +2473,13 @@ CREATE UNIQUE INDEX purchases_purchase_id_uindex ON webapi."Purchases" USING btr
 --
 
 CREATE UNIQUE INDEX vip_data_account_id_uindex ON webapi."VipData" USING btree (account_id);
+
+
+--
+-- Name: Accounts accounts_password_change_invalidates_ticket; Type: TRIGGER; Schema: webapi; Owner: tmwadmin
+--
+
+CREATE TRIGGER accounts_password_change_invalidates_ticket BEFORE UPDATE OF password_hash, secret ON webapi."Accounts" FOR EACH ROW WHEN (((old.password_hash IS DISTINCT FROM new.password_hash) OR (old.secret IS DISTINCT FROM new.secret))) EXECUTE FUNCTION webapi."InvalidateLoginTicketOnPasswordChange"();
 
 
 --
@@ -2704,5 +2760,5 @@ ALTER TABLE ONLY webapi."VipData"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict JoOXdbrZaMpokhhA6icJUaCrPORNlpOLRBHnUp2TIpHeNEi6K3lQLIYW7ABLcqj
+\unrestrict GQ9AYEHQKmchK9CWKRTGP8hSvrNkoKqjPTYJziL7fnKVRjchwBH1yJF37TbLPZd
 

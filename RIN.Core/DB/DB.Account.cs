@@ -112,5 +112,120 @@ namespace RIN.Core.DB
 
             return result;
         }
+
+        // Returns the account's ticket, minting one if it does not have one yet.
+        public async Task<string> GetOrCreateLoginTicket(long accountId)
+        {
+            var existing = await GetLoginTicket(accountId);
+            if (existing != null)
+                return existing;
+
+            for (var attempt = 0; attempt < 3; attempt++) {
+                var secret = LoginTicket.GenerateSecret();
+
+                var inserted = await DBCall(conn => conn.ExecuteAsync(
+                    @"UPDATE webapi.""Accounts""
+                        SET login_ticket            = @secret,
+                            login_ticket_hash       = @hash,
+                            login_ticket_created_at = current_timestamp
+                      WHERE account_id     = @accountId
+                        AND login_ticket IS NULL",
+                    new { accountId, secret, hash = LoginTicket.Hash(secret) }));
+
+                if (inserted > 0)
+                    return LoginTicket.Encode(secret);
+
+                existing = await GetLoginTicket(accountId);
+                if (existing != null)
+                    return existing;
+            }
+
+            return null;
+        }
+
+        // Replaces the account's ticket with a new one, invalidating the old immediately. This is for rotating by hand.
+        public async Task<string> RegenerateLoginTicket(long accountId)
+        {
+            var secret = LoginTicket.GenerateSecret();
+
+            var updated = await DBCall(conn => conn.ExecuteAsync(
+                @"UPDATE webapi.""Accounts""
+                    SET login_ticket            = @secret,
+                        login_ticket_hash       = @hash,
+                        login_ticket_created_at = current_timestamp
+                  WHERE account_id = @accountId",
+                new { accountId, secret, hash = LoginTicket.Hash(secret) }));
+
+            return updated > 0 ? LoginTicket.Encode(secret) : null;
+        }
+
+        public async Task<string> GetLoginTicket(long accountId)
+        {
+            const string SELECT_SQL = @"SELECT login_ticket
+                                        FROM webapi.""Accounts""
+                                        WHERE account_id = @accountId
+                                          AND login_ticket IS NOT NULL";
+
+            var raw = await DBCall(conn => conn.QueryFirstOrDefaultAsync<byte[]>(SELECT_SQL, new { accountId }));
+
+            return raw == null ? null : LoginTicket.Encode(raw);
+        }
+
+        // Takes the ticket payload the game server presented including the header. Strips the header, hashes the secret and looks the hash up. A
+        // database failure is reported as Error, not Unknown: a failed lookup must not look like a bad ticket, and the caller has to deny access either way.
+        public async Task<LoginTicketCheck> ValidateLoginTicket(byte[] ticketPayload)
+        {
+            var secret = LoginTicket.TryDecodePayload(ticketPayload);
+            if (secret == null)
+                return new LoginTicketCheck { Status = LoginTicketStatus.Malformed };
+
+            const string SELECT_SQL = @"SELECT account_id, is_dev, character_limit, login_ticket
+                                        FROM webapi.""Accounts""
+                                        WHERE login_ticket_hash = @hash";
+
+            var dbFailed = false;
+            var row = await DBCall(conn => conn.QueryFirstOrDefaultAsync<LoginTicketRow>(SELECT_SQL, new { hash = LoginTicket.Hash(secret) }),
+                                   ex => dbFailed = true);
+
+            if (dbFailed)
+                return new LoginTicketCheck { Status = LoginTicketStatus.Error };
+
+            if (row == null)
+                return new LoginTicketCheck { Status = LoginTicketStatus.Unknown };
+
+            if (!LoginTicket.SecretsMatch(secret, row.login_ticket))
+                return new LoginTicketCheck { Status = LoginTicketStatus.Unknown };
+
+            return new LoginTicketCheck
+            {
+                Status  = LoginTicketStatus.Valid,
+                Account = new LoginTicketAccount
+                {
+                    account_id      = row.account_id,
+                    is_dev          = row.is_dev,
+                    character_limit = row.character_limit
+                }
+            };
+        }
+
+        // Who a character belongs to, and whether it is still playable. Deletion is a row in DeletionQueue;
+        // Characters.deleted_at is checked as well so either marker is enough to keep a character out.
+        public async Task<LoginCharacter> GetLoginCharacter(long characterGuid)
+        {
+            const string SELECT_SQL = @"SELECT c.character_guid,
+                                        c.account_id,
+                                        c.is_dev,
+                                        c.is_active,
+                                        c.name,
+                                        (c.deleted_at IS NOT NULL
+                                         OR EXISTS (SELECT 1 FROM webapi.""DeletionQueue"" dq
+                                                    WHERE dq.character_guid = c.character_guid)) AS is_deleted
+                                        FROM webapi.""Characters"" c
+                                        WHERE c.character_guid = @characterGuid";
+
+            var result = await DBCall(conn => conn.QueryFirstOrDefaultAsync<LoginCharacter>(SELECT_SQL, new { characterGuid }));
+
+            return result;
+        }
     }
 }

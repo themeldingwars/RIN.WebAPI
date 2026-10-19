@@ -280,6 +280,20 @@ message ItemModule {
    uint32 SlotIndex = 1;
    uint32 ModuleSdbId = 2;
 }
+message LoginAuthorizationRequest {
+   bytes Ticket = 1;
+   uint64 CharacterGuid = 2;
+}
+message LoginAuthorizationResponse {
+   bool Authorized = 1;
+   string Reason = 2;
+   int64 AccountId = 3;
+   bool IsDev = 4;
+   int32 CharacterLimit = 5;
+   uint64 CharacterGuid = 6;
+   string CharacterName = 7;
+   bool CharacterIsDev = 8;
+}
 message PingReq {
    .google.protobuf.Timestamp SentTime = 1;
 }
@@ -435,6 +449,7 @@ message WebIdValueColorId {
    WebColorId color = 2;
 }
 service GameServerAPI {
+   rpc AuthorizeLogin (LoginAuthorizationRequest) returns (LoginAuthorizationResponse);
    rpc GetBattleframeProgression (CharacterID) returns (BattleframeProgressionResponse);
    rpc GetCharacterAndBattleframeVisuals (CharacterID) returns (CharacterAndBattleframeVisuals);
    rpc GetCharacterInventory (CharacterID) returns (CharacterInventoryResponse);

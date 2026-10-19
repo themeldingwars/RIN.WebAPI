@@ -32,6 +32,76 @@ namespace RIN.InternalAPI.Services
             return resp;
         }
 
+        /// <summary>
+        /// The login gate. Checks the ticket payload the client delivered (35 bytes, "R5 " header included)
+        /// and, when a character was asked for, that the character belongs to that ticket's account. PIN
+        /// passes the bytes through untouched - only RIN generated them, so only RIN can check them. The
+        /// ticket is never logged.
+        /// </summary>
+        public async ValueTask<LoginAuthorizationResponse> AuthorizeLogin(LoginAuthorizationRequest req)
+        {
+            var resp = new LoginAuthorizationResponse
+            {
+                Reason        = LoginAuthorizationReasons.DB_ERROR,
+                CharacterGuid = req.CharacterGuid
+            };
+
+            var check = await Db.ValidateLoginTicket(req.Ticket);
+            if (check == null || check.Status != LoginTicketStatus.Valid) {
+                resp.Reason = check?.Status switch {
+                    LoginTicketStatus.Malformed => LoginAuthorizationReasons.TICKET_MALFORMED,
+                    LoginTicketStatus.Unknown   => LoginAuthorizationReasons.TICKET_UNKNOWN,
+                    _                           => LoginAuthorizationReasons.DB_ERROR
+                };
+
+                Logger.LogWarning("AuthorizeLogin: rejected a login attempt ({reason})", resp.Reason);
+                return resp;
+            }
+
+            var account = check.Account;
+
+            resp.Authorized     = true;
+            resp.Reason         = LoginAuthorizationReasons.OK;
+            resp.AccountId      = account.account_id;
+            resp.IsDev          = account.is_dev;
+            resp.CharacterLimit = account.character_limit;
+
+            // CharacterGuid 0 means "authorise the ticket only", before a character has been picked.
+            if (req.CharacterGuid == 0)
+                return resp;
+
+            var character = await Db.GetLoginCharacter((long) req.CharacterGuid);
+            if (character == null) {
+                resp.Authorized = false;
+                resp.Reason     = LoginAuthorizationReasons.CHARACTER_NOT_FOUND;
+                Logger.LogWarning("AuthorizeLogin: account {accountId} asked for unknown character {characterGuid}",
+                                  account.account_id, req.CharacterGuid);
+                return resp;
+            }
+
+            resp.CharacterGuid  = (ulong) character.character_guid;
+            resp.CharacterName  = character.name;
+            resp.CharacterIsDev = character.is_dev;
+
+            if (character.account_id != account.account_id) {
+                resp.Authorized = false;
+                resp.Reason     = LoginAuthorizationReasons.CHARACTER_NOT_ON_ACCOUNT;
+                Logger.LogWarning("AuthorizeLogin: character {characterGuid} belongs to account {owner}, not {accountId}",
+                                  character.character_guid, character.account_id, account.account_id);
+                return resp;
+            }
+
+            if (character.is_deleted) {
+                resp.Authorized = false;
+                resp.Reason     = LoginAuthorizationReasons.CHARACTER_DELETED;
+                Logger.LogWarning("AuthorizeLogin: account {accountId} asked for deleted character {characterGuid}",
+                                  account.account_id, character.character_guid);
+                return resp;
+            }
+
+            return resp;
+        }
+
         public async ValueTask<CharacterAndBattleframeVisuals> GetCharacterAndBattleframeVisuals(CharacterID req)
         {
             var result    = await Db.GetBasicCharacterAndVisualData(req.ID);

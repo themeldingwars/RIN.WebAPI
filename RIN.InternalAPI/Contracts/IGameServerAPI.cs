@@ -8,6 +8,7 @@ namespace RIN.InternalAPI
     public interface IGameServerAPI
     {
         public ValueTask<PingResp> Ping(PingReq req);
+        public ValueTask<LoginAuthorizationResponse> AuthorizeLogin(LoginAuthorizationRequest req);
         public ValueTask<CharacterAndBattleframeVisuals> GetCharacterAndBattleframeVisuals(CharacterID req);
         public ValueTask<CharacterUnlocksResponse> GetCharacterUnlocks(CharacterID req);
         public ValueTask<TransferCharacterResp> TransferCharacter(TransferCharacterReq req);

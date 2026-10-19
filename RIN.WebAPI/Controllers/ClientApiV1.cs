@@ -200,25 +200,33 @@ namespace RIN.WebAPI.Controllers
 
         [HttpPost("oracle/ticket")]
         [R5SigAuthRequired]
-        public async Task<OracleTicket> OracleTicket(OracleTicketReq req)
+        public async Task<ActionResult<OracleTicket>> OracleTicket(OracleTicketReq req)
         {
-            if (DevServerSettings.EnableLocalDev) {
-                var ticket = new OracleTicket
-                {
-                    country           = "JP",
-                    datacenter        = DevServerSettings.DevGameServerURL.Split(":").Last(),
-                    hostname          = DevServerSettings.DevGameServerURL.Split(":").Last(),
-                    matrix_url        = DevServerSettings.DevGameServerURL,
-                    session_id        = DevServerSettings.DevSessionId,
-                    ticket            = DevServerSettings.DevTicket,
-                    operator_override = null
-                };
+            var loginResult = await Db.GetLoginData(GetUid());
+            if (loginResult == null)
+                return ReturnError(Error.Codes.ERR_INCORRECT_USERPASS, "Account not found");
 
-                return ticket;
+            var ticket = await Db.GetOrCreateLoginTicket(loginResult.account_id);
+            if (string.IsNullOrEmpty(ticket)) {
+                Logger.LogError("OracleTicket: could not issue a login ticket for account {accountId}", loginResult.account_id);
+                return ReturnError(Error.Codes.ERR_UNKNOWN, "Could not issue a login ticket");
             }
 
-            // TODO: server lookup, instances, last zone and all that
-            return null;
+            if (!DevServerSettings.EnableLocalDev) {
+                // TODO: server lookup, instances, last zone and all that
+                return null;
+            }
+
+            return new OracleTicket
+            {
+                country           = "JP",
+                datacenter        = DevServerSettings.DevGameServerURL.Split(":").Last(),
+                hostname          = DevServerSettings.DevGameServerURL.Split(":").Last(),
+                matrix_url        = DevServerSettings.DevGameServerURL,
+                session_id        = DevServerSettings.DevSessionId,
+                ticket            = ticket,
+                operator_override = null
+            };
         }
 
         // Zone List for devs
