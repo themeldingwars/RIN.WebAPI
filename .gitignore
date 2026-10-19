@@ -355,3 +355,9 @@ UnhandledRoutes/
 # Streaming assets drop folder
 RIN.WebAPI/StreamingAssets/*
 !RIN.WebAPI/StreamingAssets/.gitkeep
+
+# Proto schema emitted by ProtoFileGen on Debug startup (the contract lives in Protos/)
+RIN.InternalAPI/generated_protos/
+
+# Local database backups taken by sql/import.sh
+sql/webapi_backup_*.sql

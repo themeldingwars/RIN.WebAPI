@@ -6,6 +6,8 @@ namespace RIN.InternalAPI
 {
     public class ProtoFileGen
     {
+        private const string ProtoOutputDir = "generated_protos";
+
         public static void CreateProtoFiles()
         {
             GenServiceSchema<IGameServerAPI>();
@@ -23,7 +25,9 @@ namespace RIN.InternalAPI
             if (fileName.StartsWith('I'))
                 fileName = fileName.Substring(1);
 
-            using (var writer = new System.IO.StreamWriter($"protos/{fileName}.proto"))
+            System.IO.Directory.CreateDirectory(ProtoOutputDir);
+
+            using (var writer = new System.IO.StreamWriter($"{ProtoOutputDir}/{fileName}.proto"))
             {
                 writer.Write(schema);
             }
