@@ -158,6 +158,7 @@ namespace RIN.WebAPI.Controllers
             const byte DEFAULT_RACE = 0;
 
             var colors      = await Sdb.GetNewCharactersColors(reqData.eye_color_id, reqData.skin_color_id, reqData.hair_color_id);
+            var startClass  = await Sdb.GetStartingBattleframeId(reqData.start_class_id);
             var loginResult = await Db.GetLoginData(GetUid()); // temp
 
             var genderInt  = CharacterUtil.GenderStrToNum(reqData.gender);
@@ -168,7 +169,7 @@ namespace RIN.WebAPI.Controllers
             {
                 var charId    = await Db.CreateNewCharacter(loginResult.account_id, reqData.name, reqData.is_dev, reqData.voice_set, genderInt, visualBlob);
                 var bfVisuals = PlayerBattleframeVisuals.CreateDefault();
-                var bfId      = await Db.CreateBattleframeLoadout(charId, reqData.start_class_id, bfVisuals);
+                var bfId      = await Db.CreateBattleframeLoadout(charId, startClass, bfVisuals);
                 await Db.SetCharacterCurrentBattleframe(charId, bfId.Value);
 
                 tx.Complete();
