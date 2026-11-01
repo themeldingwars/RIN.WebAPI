@@ -10,6 +10,10 @@
 -- Template 1 "test" - is_default. The darkcisum2016 data plus the five frames - Battlelab (77733), Graviton (82359), Arsenal (82360, in the
 --                         capture at level 25, pushed to 45 here), Archangel (82394) and Swimsuit
 --                         (124356).
+--                         On top of the capture it has a weapon of every signature type, the
+--                         Accord frames get the SDB's elite reward loadouts (CharCreateLoadout
+--                         286 to 290), Recluse slots the BD-L5 Pilum (bio crossbow), Tigerclaw
+--                         the F38 Nebula (fusion cannon) and Arsenal the Necro LMG.
 --
 --
 -- PostgreSQL database dump
@@ -37,7 +41,7 @@ SET row_security = off;
 --
 
 COPY webapi."NewCharacterTemplates" (template_id, name, is_default, description) FROM stdin;
-1	test	t	Mirrors template 3 (darkcisum2016) plus the Battlelab/Graviton/Arsenal/Archangel/Swimsuit dev frames at level 45
+1	test	t	Mirrors template 3 (darkcisum2016) plus the Battlelab/Graviton/Arsenal/Archangel/Swimsuit dev frames at level 45, every signature weapon type and loadouts for the Accord frames
 2	basic	f	Built from sdb dbcharacter::CharCreateLoadout (default_pve_module)
 3	darkcisum2016	f	Snapshot of the 2016-11-15 gameplay capture: full inventory, frame unlocks and battleframe progression
 \.
@@ -198,7 +202,7 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 82	127953	4	3	963	1
 83	128557	4	3	963	1
 84	130000	4	3	1000	1
-85	87058	4	3	781	1
+85	87058	4	2	781	1
 86	129242	4	3	781	1
 87	101995	4	3	790	1
 88	140755	4	1	0	1
@@ -381,14 +385,14 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 265	129020	4	2	1000	1
 266	136722	4	2	1000	1
 267	127144	4	2	1000	1
-268	114074	4	2	1000	1
+268	114074	4	3	1000	1
 269	113520	4	3	781	1
 270	113712	4	3	781	1
 271	114112	4	3	1000	1
 272	113838	4	3	781	1
 273	82337	2	1	0	1
 274	124671	1	1	0	1
-275	107730	4	3	992	1
+275	107730	4	2	992	1
 276	101940	4	3	992	1
 277	129010	4	3	992	1
 278	106785	4	3	992	1
@@ -614,6 +618,81 @@ COPY webapi."NewCharacterTemplateItems" (template_item_id, sdb_id, sub_inventory
 498	76958	2	0	0	1
 499	77067	2	0	0	1
 500	151	2	0	0	1
+501	86879	4	3	1000	1
+502	87769	4	3	1000	1
+503	125199	4	3	1000	1
+504	91316	4	3	1000	1
+505	90519	4	3	1000	1
+506	123315	4	3	1000	1
+507	126107	4	3	1000	1
+508	129240	4	3	1000	1
+509	128948	4	3	1000	1
+510	127568	4	3	1000	1
+511	128298	4	3	1000	1
+512	126838	4	3	1000	1
+513	129094	4	3	1000	1
+514	86997	4	3	1000	1
+515	87769	4	3	1000	1
+516	91770	4	3	1000	1
+517	91688	4	3	1000	1
+518	90041	4	3	1000	1
+519	90308	4	3	1000	1
+520	126107	4	3	1000	1
+521	129240	4	3	1000	1
+522	128948	4	3	1000	1
+523	127568	4	3	1000	1
+524	128298	4	3	1000	1
+525	126838	4	3	1000	1
+526	129094	4	3	1000	1
+527	87056	4	3	1000	1
+528	87769	4	3	1000	1
+529	89124	4	3	1000	1
+530	123291	4	3	1000	1
+531	123268	4	3	1000	1
+532	88831	4	3	1000	1
+533	126107	4	3	1000	1
+534	129240	4	3	1000	1
+535	128948	4	3	1000	1
+536	127568	4	3	1000	1
+537	128298	4	3	1000	1
+538	126838	4	3	1000	1
+539	129094	4	3	1000	1
+540	87414	4	3	1000	1
+541	87769	4	3	1000	1
+542	91559	4	3	1000	1
+543	91421	4	3	1000	1
+544	131228	4	3	1000	1
+545	91527	4	3	1000	1
+546	126107	4	3	1000	1
+547	129240	4	3	1000	1
+548	128948	4	3	1000	1
+549	127568	4	3	1000	1
+550	128298	4	3	1000	1
+551	126838	4	3	1000	1
+552	129094	4	3	1000	1
+553	86770	4	3	1000	1
+554	87769	4	3	1000	1
+555	88491	4	3	1000	1
+556	88065	4	3	1000	1
+557	88341	4	3	1000	1
+558	88121	4	3	1000	1
+559	126107	4	3	1000	1
+560	129240	4	3	1000	1
+561	128948	4	3	1000	1
+562	127568	4	3	1000	1
+563	128298	4	3	1000	1
+564	126838	4	3	1000	1
+565	129094	4	3	1000	1
+566	113990	4	2	1000	1
+567	114340	4	2	1000	1
+568	114014	4	2	1000	1
+569	118347	4	2	1000	1
+570	118521	4	2	1000	1
+571	142403	4	2	1000	1
+572	142542	4	2	1000	1
+573	98136	4	3	1000	1
+574	106444	4	3	1000	1
+575	114316	4	3	1000	1
 1	77067	2	0	0	3
 2	77067	2	0	0	3
 3	77067	2	0	0	3
@@ -1352,6 +1431,11 @@ COPY webapi."NewCharacterTemplateLoadouts" (template_loadout_id, chassis_id, loa
 13	82360	ODM "Arsenal"	battleframe	1
 14	82394	ODM "Archangel"	battleframe	1
 15	124356	Social: Beach Party Loadout	battleframe	1
+16	75772	Accord Dreadnaught	battleframe	1
+17	75773	Accord Recon	battleframe	1
+18	75774	Accord Biotech	battleframe	1
+19	75775	Accord Engineer	battleframe	1
+20	76164	Accord Assault	battleframe	1
 1	76132	ODM "Tigerclaw"	battleframe	3
 2	76133	Astrek "Firecat"	battleframe	3
 3	76336	Astrek "Recluse"	battleframe	3
@@ -1460,7 +1544,7 @@ COPY webapi."NewCharacterTemplateLoadoutPerks" (template_id, template_loadout_id
 --
 
 COPY webapi."NewCharacterTemplateLoadoutSlots" (template_loadout_id, config_id, slot_index, template_item_id, template_id) FROM stdin;
-1	0	1	275	1
+1	0	1	573	1
 1	0	2	29	1
 1	0	6	173	1
 1	0	7	423	1
@@ -1516,7 +1600,7 @@ COPY webapi."NewCharacterTemplateLoadoutSlots" (template_loadout_id, config_id, 
 2	1	127	113	1
 2	1	128	114	1
 2	1	129	115	1
-3	0	1	85	1
+3	0	1	268	1
 3	0	2	35	1
 3	0	6	272	1
 3	0	7	270	1
@@ -1644,6 +1728,73 @@ COPY webapi."NewCharacterTemplateLoadoutSlots" (template_loadout_id, config_id, 
 10	0	127	257	1
 10	0	128	311	1
 10	0	129	240	1
+16	0	1	501	1
+16	0	2	502	1
+16	0	6	503	1
+16	0	7	504	1
+16	0	8	505	1
+16	0	9	506	1
+16	0	116	507	1
+16	0	122	508	1
+16	0	123	509	1
+16	0	126	510	1
+16	0	127	511	1
+16	0	128	512	1
+16	0	129	513	1
+17	0	1	514	1
+17	0	2	515	1
+17	0	6	516	1
+17	0	7	517	1
+17	0	8	518	1
+17	0	9	519	1
+17	0	116	520	1
+17	0	122	521	1
+17	0	123	522	1
+17	0	126	523	1
+17	0	127	524	1
+17	0	128	525	1
+17	0	129	526	1
+18	0	1	527	1
+18	0	2	528	1
+18	0	6	529	1
+18	0	7	530	1
+18	0	8	531	1
+18	0	9	532	1
+18	0	116	533	1
+18	0	122	534	1
+18	0	123	535	1
+18	0	126	536	1
+18	0	127	537	1
+18	0	128	538	1
+18	0	129	539	1
+19	0	1	540	1
+19	0	2	541	1
+19	0	6	542	1
+19	0	7	543	1
+19	0	8	544	1
+19	0	9	545	1
+19	0	116	546	1
+19	0	122	547	1
+19	0	123	548	1
+19	0	126	549	1
+19	0	127	550	1
+19	0	128	551	1
+19	0	129	552	1
+20	0	1	553	1
+20	0	2	554	1
+20	0	6	555	1
+20	0	7	556	1
+20	0	8	557	1
+20	0	9	558	1
+20	0	116	559	1
+20	0	122	560	1
+20	0	123	561	1
+20	0	126	562	1
+20	0	127	563	1
+20	0	128	564	1
+20	0	129	565	1
+13	0	1	574	1
+13	0	2	575	1
 1	0	1	275	3
 1	0	2	29	3
 1	0	6	173	3
