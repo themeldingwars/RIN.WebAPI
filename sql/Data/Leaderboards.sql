@@ -32,4 +32,14 @@ VALUES (1, 'Copacabana - Trans-Hub race', 1, 0),
        (2, 'Trans-Hub - Sunken Harbor race', 1, 0),
        (3, 'Sunken Harbor - Copacabana race', 1, 0),
        (4, 'Copacabana - Thump Dump race', 1, 0),
-       (5, 'Thump Dump - Copacabana race', 1, 0);
+       (5, 'Thump Dump - Copacabana race', 1, 0),
+       (6, 'Shore Shot - Northern Shores Race', 1, 0),
+       (7, 'Cerrado Challenge - Cerrado Race', 1, 0),
+       (8, 'Nutretic Loop - Nutretic Race', 1, 0),
+       (9, 'Dredge Drive - Dredge Race', 1, 0),
+       (10, 'Desert Drop Off - Station South-east of Andreev Station', 1, 0),
+       (11, 'Redwood Roundabout - Lab 16 Race', 1, 0),
+       (12, 'Devils Eight - Crossroads Station Race', 1, 0),
+       (13, 'Jungle Jumps - Forest Watch Race', 1, 0),
+       (14, 'Lavaventure - Camp Jasper Race', 1, 0)
+;
