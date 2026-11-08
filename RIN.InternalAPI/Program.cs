@@ -35,6 +35,9 @@ namespace RIN.InternalAPI
             builder.Services.AddHostedService(provider => provider.GetRequiredService<DbEventBus>());
 
             var app = builder.Build();
+
+            // The presence of characters starts empty here, the database has to forget who was online before
+            app.Services.GetRequiredService<DB>().ClearCharacterPresence().GetAwaiter().GetResult();
             app.UseSerilogRequestLogging();
 
             // Configure the HTTP request pipeline.

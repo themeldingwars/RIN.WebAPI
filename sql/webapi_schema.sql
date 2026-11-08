@@ -1638,7 +1638,8 @@ CREATE TABLE webapi."Characters" (
     expires_in timestamp with time zone,
     current_battleframe_guid bigint,
     last_zone_id integer,
-    last_outpost_id integer
+    last_outpost_id integer,
+    current_zone_id integer
 );
 
 

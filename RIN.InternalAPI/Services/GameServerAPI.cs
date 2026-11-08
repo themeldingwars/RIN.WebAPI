@@ -284,9 +284,13 @@ namespace RIN.InternalAPI.Services
                 // A character back within the wait only changed zones, it neither left nor arrived
                 if (cameOnline && !wasLeaving && !report.Resync)
                     await PublishLoginNotice(report.CharacterGuid, report.Name, true);
+
+                await Db.SetCharacterOnline((long)report.CharacterGuid, (int)report.Presence.ZoneId);
             }
             else if (Presence.Remove(report.CharacterGuid, owner))
             {
+                await Db.SetCharacterOffline((long)report.CharacterGuid);
+
                 if (report.MayReturn)
                     AnnounceLogoutLater(report.CharacterGuid, report.Name);
                 else
@@ -337,6 +341,7 @@ namespace RIN.InternalAPI.Services
             {
                 // The game server may just be reconnecting, it reports its players again within the wait
                 AnnounceLogoutLater(characterGuid, name);
+                await Db.SetCharacterOffline((long)characterGuid);
 
                 var onlineFriends = await GetOnlineFriends(characterGuid);
                 if (onlineFriends.Count == 0)
