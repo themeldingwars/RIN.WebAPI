@@ -12,13 +12,18 @@ namespace RIN.InternalAPI.Services
         private readonly ILogger<GameServerAPI> Logger;
         private readonly DbEventBus EventBus;
         private readonly IHostApplicationLifetime Lifetime;
+        private readonly FriendPresenceRegistry Presence;
 
-        public GameServerAPI(DB db, ILogger<GameServerAPI> logger, DbEventBus eventBus, IHostApplicationLifetime lifetime)
+        // How long a character has to stay offline before its friends and army are told it logged out
+        private static readonly TimeSpan LogoutNoticeDelay = TimeSpan.FromSeconds(60);
+
+        public GameServerAPI(DB db, ILogger<GameServerAPI> logger, DbEventBus eventBus, IHostApplicationLifetime lifetime, FriendPresenceRegistry presence)
         {
             Db     = db;
             Logger = logger;
             EventBus = eventBus;
             Lifetime = lifetime;
+            Presence = presence;
         }
 
         public async ValueTask<PingResp> Ping(PingReq req)
@@ -184,6 +189,244 @@ namespace RIN.InternalAPI.Services
             return new TransferCharacterResp { Success = saved };
         }
 
+        public async ValueTask<CharacterFriendsResponse> GetCharacterFriends(CharacterID req)
+        {
+            var dbFriends = await Db.GetCharacterFriends(req.ID);
+
+            return new CharacterFriendsResponse
+            {
+                Friends = dbFriends.Select(ToWireFriend).ToList()
+            };
+        }
+
+        /// <summary>
+        /// Adds a friend by name, which sends a request or accepts one, removes one, which ends a friendship,
+        /// takes back a request or declines one, or sets the note on one. Unlike a command over the stream this
+        /// answers, so the game server can tell both players what happened.
+        /// </summary>
+        public async ValueTask<UpdateCharacterFriendResp> UpdateCharacterFriend(UpdateCharacterFriendReq req)
+        {
+            var characterGuid = (long)req.CharacterGuid;
+            var note          = req.HasNote ? req.Note : null;
+
+            var (status, friend) = req.Action switch {
+                UpdateCharacterFriendActions.ADD      => await Db.AddCharacterFriend(characterGuid, req.FriendName, note),
+                UpdateCharacterFriendActions.SET_NOTE => await Db.SetCharacterFriendNote(characterGuid, req.FriendName, note ?? string.Empty),
+                _                                     => await Db.RemoveCharacterFriend(characterGuid, req.FriendName)
+            };
+
+            var resp = new UpdateCharacterFriendResp
+            {
+                Reason = status switch {
+                    FriendUpdateStatus.Requested => UpdateCharacterFriendReasons.REQUESTED,
+                    FriendUpdateStatus.Accepted  => UpdateCharacterFriendReasons.ACCEPTED,
+                    FriendUpdateStatus.Unchanged => UpdateCharacterFriendReasons.UNCHANGED,
+                    FriendUpdateStatus.Removed   => UpdateCharacterFriendReasons.REMOVED,
+                    FriendUpdateStatus.Cancelled => UpdateCharacterFriendReasons.CANCELLED,
+                    FriendUpdateStatus.Declined  => UpdateCharacterFriendReasons.DECLINED,
+                    FriendUpdateStatus.NotFound  => UpdateCharacterFriendReasons.NOT_FOUND,
+                    FriendUpdateStatus.Self      => UpdateCharacterFriendReasons.SELF,
+                    _                            => UpdateCharacterFriendReasons.DB_ERROR
+                }
+            };
+
+            if (friend != null)
+            {
+                resp.Friend = ToWireFriend(friend);
+                if (Presence.TryGet(resp.Friend.CharacterGuid, out var friendPresence))
+                    resp.FriendPresence = friendPresence;
+            }
+
+            Logger.LogInformation("UpdateCharacterFriend: {characterGuid} {action} {friendName}: {reason}",
+                                  req.CharacterGuid, req.Action, req.FriendName, resp.Reason);
+
+            // The game server that asked tells its own player, the other character may be on any game server
+            var kind = status switch {
+                FriendUpdateStatus.Requested => FriendNotificationKinds.REQUEST,
+                FriendUpdateStatus.Accepted  => FriendNotificationKinds.ACCEPTED,
+                FriendUpdateStatus.Declined  => FriendNotificationKinds.DECLINED,
+                FriendUpdateStatus.Removed   => FriendNotificationKinds.REMOVED,
+                FriendUpdateStatus.Cancelled => FriendNotificationKinds.REMOVED,
+                _                            => 0u
+            };
+
+            if (kind != 0)
+            {
+                var self = await Db.GetLoginCharacter(characterGuid);
+                var notification = new FriendNotification
+                {
+                    TargetGuids = [resp.Friend!.CharacterGuid],
+                    Kind        = kind,
+                    FromGuid    = req.CharacterGuid,
+                    FromName    = self?.name ?? string.Empty
+                };
+
+                if (kind == FriendNotificationKinds.ACCEPTED && Presence.TryGet(req.CharacterGuid, out var selfPresence))
+                    notification.FromPresence = selfPresence;
+
+                EventBus.Publish(notification);
+            }
+
+            return resp;
+        }
+
+        /// <summary>
+        /// Keeps the presence of a character and tells its online friends, wherever they are. When asked, the
+        /// character is also told about its friends that are online.
+        /// </summary>
+        private async Task SetFriendPresence(SetFriendPresence report, Guid owner)
+        {
+            if (report.Presence != null)
+            {
+                var cameOnline = Presence.Set(report.CharacterGuid, report.Name, report.Presence, owner);
+                var wasLeaving = Presence.CancelLeaving(report.CharacterGuid);
+
+                // A character back within the wait only changed zones, it neither left nor arrived
+                if (cameOnline && !wasLeaving && !report.Resync)
+                    await PublishLoginNotice(report.CharacterGuid, report.Name, true);
+            }
+            else if (Presence.Remove(report.CharacterGuid, owner))
+            {
+                if (report.MayReturn)
+                    AnnounceLogoutLater(report.CharacterGuid, report.Name);
+                else
+                    await PublishLoginNotice(report.CharacterGuid, report.Name, false);
+            }
+            else
+            {
+                // Already offline, or online again on another game server
+                return;
+            }
+
+            var onlineFriends = await GetOnlineFriends(report.CharacterGuid);
+            if (onlineFriends.Count == 0)
+                return;
+
+            EventBus.Publish(new FriendNotification
+            {
+                TargetGuids  = onlineFriends.Select(f => (ulong)f.friend_guid).ToList(),
+                Kind         = report.Presence != null ? FriendNotificationKinds.ONLINE : FriendNotificationKinds.OFFLINE,
+                FromGuid     = report.CharacterGuid,
+                FromName     = report.Name,
+                FromPresence = report.Presence
+            });
+
+            if (report.Presence == null || !report.SendFriends)
+                return;
+
+            foreach (var friend in onlineFriends)
+            {
+                if (!Presence.TryGet((ulong)friend.friend_guid, out var friendPresence))
+                    continue;
+
+                EventBus.Publish(new FriendNotification
+                {
+                    TargetGuids  = [report.CharacterGuid],
+                    Kind         = FriendNotificationKinds.ONLINE,
+                    FromGuid     = (ulong)friend.friend_guid,
+                    FromName     = friend.name,
+                    FromPresence = friendPresence
+                });
+            }
+        }
+
+        // The game server behind a stream is gone, so are the characters it reported
+        private async Task ClearFriendPresence(Guid owner)
+        {
+            foreach (var (characterGuid, name) in Presence.RemoveOwnedBy(owner))
+            {
+                // The game server may just be reconnecting, it reports its players again within the wait
+                AnnounceLogoutLater(characterGuid, name);
+
+                var onlineFriends = await GetOnlineFriends(characterGuid);
+                if (onlineFriends.Count == 0)
+                    continue;
+
+                EventBus.Publish(new FriendNotification
+                {
+                    TargetGuids = onlineFriends.Select(f => (ulong)f.friend_guid).ToList(),
+                    Kind        = FriendNotificationKinds.OFFLINE,
+                    FromGuid    = characterGuid,
+                    FromName    = name
+                });
+            }
+        }
+
+        /// <summary>
+        /// Announces a logout once the character has stayed offline for LogoutNoticeDelay, for the logouts that are
+        /// likely to be followed by a login: a zone transfer is a logout and a login again, a player whose client
+        /// timed out or crashed often logs straight back in, and a game server losing its stream reports its players
+        /// again. A player logging out themselves is announced at once.
+        /// </summary>
+        private void AnnounceLogoutLater(ulong characterGuid, string name)
+        {
+            var cts = Presence.BeginLeaving(characterGuid);
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(LogoutNoticeDelay, cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+
+                if (Presence.EndLeaving(characterGuid, cts) && !Presence.IsOnline(characterGuid))
+                    await PublishLoginNotice(characterGuid, name, false);
+            });
+        }
+
+        /// <summary>
+        /// Puts a line in the chat of the online friends and army mates of a character that logged in or out. A
+        /// friend that is also in the army only gets the friend line.
+        /// </summary>
+        private async Task PublishLoginNotice(ulong characterGuid, string name, bool loggedIn)
+        {
+            try
+            {
+                var friends = (await GetOnlineFriends(characterGuid)).Select(f => (ulong)f.friend_guid).ToHashSet();
+                var mates = (await Db.GetArmyMates((long)characterGuid))
+                            .Select(g => (ulong)g)
+                            .Where(g => Presence.IsOnline(g) && !friends.Contains(g))
+                            .ToList();
+
+                if (friends.Count > 0)
+                {
+                    EventBus.Publish(new FriendNotification
+                    {
+                        TargetGuids = friends.ToList(),
+                        Kind        = loggedIn ? FriendNotificationKinds.FRIEND_LOGIN : FriendNotificationKinds.FRIEND_LOGOUT,
+                        FromGuid    = characterGuid,
+                        FromName    = name
+                    });
+                }
+
+                if (mates.Count > 0)
+                {
+                    EventBus.Publish(new FriendNotification
+                    {
+                        TargetGuids = mates,
+                        Kind        = loggedIn ? FriendNotificationKinds.ARMY_LOGIN : FriendNotificationKinds.ARMY_LOGOUT,
+                        FromGuid    = characterGuid,
+                        FromName    = name
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Couldn't announce that {characterGuid} logged {direction}", characterGuid, loggedIn ? "in" : "out");
+            }
+        }
+
+        // Requests don't get presence, only friends do
+        private async Task<List<CharacterFriendRow>> GetOnlineFriends(ulong characterGuid)
+        {
+            var friends = await Db.GetCharacterFriends((long)characterGuid);
+            return friends.Where(f => f.status == CharacterFriendStatus.Friend && Presence.IsOnline((ulong)f.friend_guid)).ToList();
+        }
+
         public async ValueTask<CharacterInventoryResponse> GetCharacterInventory(CharacterID req)
         {
             var dbInventory = await Db.GetCharacterInventory(req.ID);
@@ -271,7 +514,7 @@ namespace RIN.InternalAPI.Services
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken, Lifetime.ApplicationStopping);
             var token = cts.Token;
-            var commandsTask = ReadCommands(commands, channel, token);
+            var commandsTask = ReadCommands(commands, channel, subscriptionId, token);
 
             try
             {
@@ -301,10 +544,11 @@ namespace RIN.InternalAPI.Services
                 channel.Writer.TryComplete();
                 EventBus.Unsubscribe(subscriptionId);
                 await commandsTask;
+                await ClearFriendPresence(subscriptionId);
             }
         }
 
-        private async Task ReadCommands(IAsyncEnumerable<Command> commands, Channel<Event> channel, CancellationToken token)
+        private async Task ReadCommands(IAsyncEnumerable<Command> commands, Channel<Event> channel, Guid subscriptionId, CancellationToken token)
         {
             try
             {
@@ -314,6 +558,9 @@ namespace RIN.InternalAPI.Services
 
                     switch (command)
                     {
+                        case SetFriendPresence presence:
+                            await SetFriendPresence(presence, subscriptionId);
+                            break;
                         case SaveGameSessionData data:
                             await Db.UpdateCharacterAfterGameSession((long)data.CharacterId, (int)data.ZoneId, (int)data.OutpostId, (int)data.TimePlayed);
                             break;
@@ -525,6 +772,19 @@ namespace RIN.InternalAPI.Services
                 Data1      = entry.Data1,
                 Data2      = entry.Data2,
                 Transform  = entry.Transform ?? new List<float>()
+            };
+        }
+
+        private CharacterFriendEntry ToWireFriend(CharacterFriendRow friend)
+        {
+            return new CharacterFriendEntry
+            {
+                CharacterGuid = (ulong)friend.friend_guid,
+                Name          = friend.name,
+                Note          = friend.note ?? string.Empty,
+                LastSeenAt    = friend.last_seen_at,
+                Status        = (uint)friend.status,
+                IsOnline      = Presence.IsOnline((ulong)friend.friend_guid)
             };
         }
 

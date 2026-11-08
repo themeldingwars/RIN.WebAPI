@@ -31,6 +31,7 @@ namespace RIN.InternalAPI
             builder.Services.AddSingleton<DB>();
             builder.Services.AddSingleton<SDB>();
             builder.Services.AddSingleton<DbEventBus>();
+            builder.Services.AddSingleton<FriendPresenceRegistry>();
             builder.Services.AddHostedService(provider => provider.GetRequiredService<DbEventBus>());
 
             var app = builder.Build();

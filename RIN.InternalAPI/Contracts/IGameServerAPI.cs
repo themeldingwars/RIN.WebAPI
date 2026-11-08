@@ -14,6 +14,8 @@ namespace RIN.InternalAPI
         public ValueTask<TransferCharacterResp> TransferCharacter(TransferCharacterReq req);
         public ValueTask<CharacterInventoryResponse> GetCharacterInventory(CharacterID req);
         public ValueTask<BattleframeProgressionResponse> GetBattleframeProgression(CharacterID req);
+        public ValueTask<CharacterFriendsResponse> GetCharacterFriends(CharacterID req);
+        public ValueTask<UpdateCharacterFriendResp> UpdateCharacterFriend(UpdateCharacterFriendReq req);
         public IAsyncEnumerable<Event> Stream(IAsyncEnumerable<Command> commands, CallContext context = default);
     }
 }

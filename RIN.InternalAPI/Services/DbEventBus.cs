@@ -32,6 +32,9 @@ namespace RIN.InternalAPI.Services
 
         public void Unsubscribe(Guid id) => Subscribers.TryRemove(id, out _);
 
+        // For events RIN raises itself rather than the database, they go out in order with the database ones
+        public void Publish(Event evt) => InternalChannel.Writer.TryWrite(evt);
+
         protected override async Task ExecuteAsync(CancellationToken ct)
         {
             try
