@@ -28,6 +28,7 @@ namespace RIN.InternalAPI.Models
     [ProtoInclude(22, typeof(DeleteLoadoutPerk))]
     [ProtoInclude(23, typeof(SaveBattleframeBandwidth))]
     [ProtoInclude(24, typeof(SaveLoadoutVisuals))]
+    [ProtoInclude(25, typeof(SetFriendPresence))]
     public abstract class Command;
 
     [ProtoContract]

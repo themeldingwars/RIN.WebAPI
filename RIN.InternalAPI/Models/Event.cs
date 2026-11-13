@@ -18,6 +18,7 @@ namespace RIN.InternalAPI.Models
     [ProtoInclude(13, typeof(CharacterVisualsUpdated))]
     [ProtoInclude(14, typeof(InventoryUpdated))]
     [ProtoInclude(15, typeof(UnlocksUpdated))]
+    [ProtoInclude(16, typeof(FriendNotification))]
     public abstract class Event;
 
     [ProtoContract]

@@ -83,7 +83,7 @@ namespace RIN.Core.DB
                 SELECT
                     ar.name AS rank_name,
                     c.name,
-                    true as is_online
+                    c.current_zone_id IS NOT NULL AS is_online
                 FROM webapi.""ArmyMembers"" am
                 LEFT JOIN webapi.""Characters"" c USING (character_guid)
                 LEFT JOIN webapi.""ArmyRanks"" ar USING (army_rank_id)
@@ -369,8 +369,8 @@ namespace RIN.Core.DB
                     c.name,
                     b.battleframe_sdb_id AS current_frame_sdb_id,
                     b.level AS current_level,
-                    c.last_zone_id,
-                    true as is_online
+                    COALESCE(c.current_zone_id, c.last_zone_id) AS last_zone_id,
+                    c.current_zone_id IS NOT NULL AS is_online
                 FROM webapi.""ArmyMembers"" am
                 INNER JOIN webapi.""Characters"" c USING (character_guid)
                 INNER JOIN webapi.""ArmyRanks"" ar USING (army_rank_id)
