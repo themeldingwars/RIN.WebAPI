@@ -60,6 +60,7 @@ namespace RIN.InternalAPI.Models
         public const string DECLINED  = "DECLINED";   // a request the character received was turned down
         public const string NOT_FOUND = "NOT_FOUND";  // no character goes by that name, or the name isn't on the list for a removal or a note
         public const string SELF      = "SELF";
+        public const string INVALID_ACTION = "INVALID_ACTION";
         public const string DB_ERROR  = "DB_ERROR";
     }
 

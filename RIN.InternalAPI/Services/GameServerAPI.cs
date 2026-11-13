@@ -209,11 +209,21 @@ namespace RIN.InternalAPI.Services
             var characterGuid = (long)req.CharacterGuid;
             var note          = req.HasNote ? req.Note : null;
 
-            var (status, friend) = req.Action switch {
+            (FriendUpdateStatus status, CharacterFriendRow friend)? result = req.Action switch {
                 UpdateCharacterFriendActions.ADD      => await Db.AddCharacterFriend(characterGuid, req.FriendName, note),
                 UpdateCharacterFriendActions.SET_NOTE => await Db.SetCharacterFriendNote(characterGuid, req.FriendName, note ?? string.Empty),
-                _                                     => await Db.RemoveCharacterFriend(characterGuid, req.FriendName)
+                UpdateCharacterFriendActions.REMOVE   => await Db.RemoveCharacterFriend(characterGuid, req.FriendName),
+                _                                     => null
             };
+
+            if (result == null)
+            {
+                Logger.LogWarning("UpdateCharacterFriend: {characterGuid} sent unknown action {action} for {friendName}",
+                                  req.CharacterGuid, req.Action, req.FriendName);
+                return new UpdateCharacterFriendResp { Reason = UpdateCharacterFriendReasons.INVALID_ACTION };
+            }
+
+            var (status, friend) = result.Value;
 
             var resp = new UpdateCharacterFriendResp
             {
