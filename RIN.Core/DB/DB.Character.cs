@@ -39,6 +39,13 @@ namespace RIN.Core.DB
             return result.Item1;
         }
 
+        public async Task<bool> IsCharacterOnAccount(long accountId, long characterGuid)
+        {
+            const string SELECT_SQL = @"SELECT EXISTS (SELECT 1 FROM webapi.""Characters"" WHERE character_guid = @characterGuid AND account_id = @accountId)";
+
+            return await DBCall(conn => conn.QueryFirstAsync<bool>(SELECT_SQL, new { accountId, characterGuid }));
+        }
+
         public async Task<List<Character>> GetCharactersForAccount(long accountId)
         {
             const string SELECT_SQL = @"SELECT

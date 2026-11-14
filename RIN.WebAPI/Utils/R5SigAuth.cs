@@ -53,7 +53,15 @@ namespace RIN.WebAPI.Utils
 
             var result = await VerifyRequest(context.HttpContext.Request, loginResult.secret, Config.Red5SigMaxClockSkew);
             if (result != Red5Sig.VerifyResult.Valid)
+            {
                 context.Result = CreateError(Error.Codes.ERR_INCORRECT_USERPASS);
+                return;
+            }
+
+            // The signature only proves the account; the character it names has to be one of the account's
+            var cid = Red5Sig.ParseString(header).Cid;
+            if (cid != 0 && !await Db.IsCharacterOnAccount(loginResult.account_id, (long)cid))
+                context.Result = CreateError(Error.Codes.ERR_INCORRECT_USERPASS, "Character not on this account");
         }
 
         // Checks the token, the body hash and the time of the signature, the body stays readable for the action
