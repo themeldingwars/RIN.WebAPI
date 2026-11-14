@@ -16,6 +16,9 @@ namespace RIN.InternalAPI
         public ValueTask<BattleframeProgressionResponse> GetBattleframeProgression(CharacterID req);
         public ValueTask<CharacterFriendsResponse> GetCharacterFriends(CharacterID req);
         public ValueTask<UpdateCharacterFriendResp> UpdateCharacterFriend(UpdateCharacterFriendReq req);
+        public ValueTask<SettleWalletChargeResp> SettleWalletCharge(SettleWalletChargeReq req);
+        public ValueTask<CurrencyDeliveriesResponse> ClaimCurrencyDeliveries(CharacterID req);
+        public ValueTask<RedBeanBalanceResponse> GetRedBeanBalance(CharacterID req);
         public IAsyncEnumerable<Event> Stream(IAsyncEnumerable<Command> commands, CallContext context = default);
     }
 }
