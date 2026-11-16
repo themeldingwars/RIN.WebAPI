@@ -18,13 +18,16 @@ namespace RIN.WebAPI.Controllers
     public partial class ClientAPiV3 : TmwController
     {
         private readonly ServerDefaultsSettings ServerDefaults;
+        private readonly CurrencyExchangeSettings CurrencyExchange;
         private readonly ILogger<OperatorController> Logger;
         private readonly DB Db;
         private readonly SDB SDB;
 
-        public ClientAPiV3(IOptions<ServerDefaultsSettings> serverDefaults, ILogger<OperatorController> logger, DB db, SDB sdb)
+        public ClientAPiV3(IOptions<ServerDefaultsSettings> serverDefaults, IOptions<CurrencyExchangeSettings> currencyExchange,
+                           ILogger<OperatorController> logger, DB db, SDB sdb)
         {
             ServerDefaults = serverDefaults.Value;
+            CurrencyExchange = currencyExchange.Value;
             Logger = logger;
             Db = db;
             SDB = sdb;

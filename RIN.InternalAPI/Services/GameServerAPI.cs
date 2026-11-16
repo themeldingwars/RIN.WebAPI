@@ -189,6 +189,49 @@ namespace RIN.InternalAPI.Services
             return new TransferCharacterResp { Success = saved };
         }
 
+        public async ValueTask<SettleWalletChargeResp> SettleWalletCharge(SettleWalletChargeReq req)
+        {
+            var settlement = Guid.TryParse(req.PaymentId, out var paymentId)
+                ? await Db.SettleWalletCharge(req.Kind, req.Id, (long)req.CharacterGuid, req.Paid, paymentId)
+                : WalletChargeSettlement.Error;
+
+            if (settlement == WalletChargeSettlement.Error)
+                Logger.LogError("SettleWalletCharge: couldn't settle charge {kind}/{id} of {characterGuid}, paid {paid}",
+                                req.Kind, req.Id, req.CharacterGuid, req.Paid);
+            else
+                Logger.LogInformation("SettleWalletCharge: charge {kind}/{id} of {characterGuid}, paid {paid}: kept {kept}, status {status}",
+                                      req.Kind, req.Id, req.CharacterGuid, req.Paid, settlement.Kept, settlement.Status);
+
+            return new SettleWalletChargeResp { Kept = settlement.Kept, Status = settlement.Status };
+        }
+
+        public async ValueTask<CurrencyDeliveriesResponse> ClaimCurrencyDeliveries(CharacterID req)
+        {
+            var resp    = new CurrencyDeliveriesResponse();
+            var claimed = await Db.ClaimCurrencyDeliveries(req.ID);
+
+            if (claimed == null)
+            {
+                Logger.LogError("ClaimCurrencyDeliveries: couldn't claim the deliveries of {characterGuid}", req.ID);
+                return resp;
+            }
+
+            foreach (var delivery in claimed)
+            {
+                resp.Deliveries.Add(new CurrencyDelivery { SdbId = (uint)delivery.sdb_id, Quantity = (uint)delivery.quantity });
+                Logger.LogInformation("ClaimCurrencyDeliveries: {characterGuid} claimed {quantity} of {sdbId}", req.ID, delivery.quantity, delivery.sdb_id);
+            }
+
+            return resp;
+        }
+
+        public async ValueTask<RedBeanBalanceResponse> GetRedBeanBalance(CharacterID req)
+        {
+            var balance = await Db.GetRedBeanBalance(req.ID);
+
+            return new RedBeanBalanceResponse { Found = balance.HasValue, Balance = balance ?? 0 };
+        }
+
         public async ValueTask<CharacterFriendsResponse> GetCharacterFriends(CharacterID req)
         {
             var dbFriends = await Db.GetCharacterFriends(req.ID);
@@ -581,6 +624,11 @@ namespace RIN.InternalAPI.Services
                             break;
                         case SaveLgvRaceFinish race:
                             await Db.SaveLgvRaceFinish((long)race.CharacterGuid, (int)race.LeaderboardId, (long)race.TimeMs);
+                            break;
+                        case AwardRedBeans award:
+                            if (!await Db.AwardRedBeans((long)award.CharacterGuid, award.Amount))
+                                Logger.LogError("AwardRedBeans: couldn't give {amount} red beans to the account of {characterGuid}",
+                                                award.Amount, award.CharacterGuid);
                             break;
                         case SaveCharacterUnlock unlock:
                             await Db.UpsertCharacterUnlock((long)unlock.CharacterGuid, unlock.UnlockType, (int)unlock.UnlockId, (int)unlock.FrameId);

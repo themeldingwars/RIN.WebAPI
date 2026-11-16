@@ -29,6 +29,7 @@ namespace RIN.InternalAPI.Models
     [ProtoInclude(23, typeof(SaveBattleframeBandwidth))]
     [ProtoInclude(24, typeof(SaveLoadoutVisuals))]
     [ProtoInclude(25, typeof(SetFriendPresence))]
+    [ProtoInclude(26, typeof(AwardRedBeans))]
     public abstract class Command;
 
     [ProtoContract]
@@ -303,5 +304,12 @@ namespace RIN.InternalAPI.Models
         [ProtoMember(3)] public uint ConfigId { get; set; }
 
         [ProtoMember(4)] public List<LoadoutVisual> Visuals { get; set; } = new();
+    }
+
+    [ProtoContract]
+    public class AwardRedBeans : Command
+    {
+        [ProtoMember(1)] public ulong CharacterGuid { get; set; }
+        [ProtoMember(2)] public uint  Amount        { get; set; }
     }
 }
