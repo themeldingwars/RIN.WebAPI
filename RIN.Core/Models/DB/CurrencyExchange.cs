@@ -13,18 +13,6 @@ namespace RIN.Core.DB
     {
         public const int CRYSTITE_SDB_ID = 10;
         public const int CREDITS_SDB_ID  = 30101;
-
-        /// <summary>
-        /// The rates the exchange offers. The 1962 client only ever asks for crystite into credits, and its confirm
-        /// prompt only adds up when ToQuantity is 1.
-        /// </summary>
-        public static readonly IReadOnlyList<CurrencyExchangeRate> All =
-        [
-            new(CRYSTITE_SDB_ID, CREDITS_SDB_ID, FromQuantity: 25, ToQuantity: 1, DailyLimit: 1000)
-        ];
-
-        public static CurrencyExchangeRate? Find(int fromSdbId, int toSdbId)
-            => All.FirstOrDefault(r => r.FromSdbId == fromSdbId && r.ToSdbId == toSdbId);
     }
 
     // Error is never stored, it means the database could not be reached or the request is not there

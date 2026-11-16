@@ -6,10 +6,11 @@
 --   0 pending, waiting for the game server
 --   1 exchanged, the game server took the payment and the purchase was delivered
 --   2 the character couldn't pay for it
---   3 it would have gone over the day's limit
+--   3 it would have gone over the day's limit (no longer set: the limit is checked before a purchase is stored)
 --   4 no game server answered in time, the character is offline or between zones
--- exchange_day is the UTC day an exchange went through on, NULL for the others. The daily limit counts the exchanged
--- ones per day; it resets at midnight UTC, the same moment the client's countdown runs out.
+-- exchange_day is the UTC day a purchase was opened on, kept for the exchanged ones and NULL for the failed ones. The
+-- daily limit counts the exchanged ones and the pending ones that can still go through, so opening a purchase reserves
+-- its share; it resets at midnight UTC, the same moment the client's countdown runs out.
 --
 -- CharacterCurrencyDeliveries: currency owed to a character, sdb_id being the resource. claimed_at is set when a game
 -- server put it in the character's wallet.

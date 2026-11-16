@@ -54,6 +54,7 @@ builder.Services.Configure<WebApiConfigSettings>(builder.Configuration.GetSectio
 builder.Services.Configure<DevServerSettings>(builder.Configuration.GetSection(DevServerSettings.NAME));
 builder.Services.Configure<ServerDefaultsSettings>(builder.Configuration.GetSection(ServerDefaultsSettings.NAME));
 builder.Services.Configure<DbConnectionSettings>(builder.Configuration.GetSection(DbConnectionSettings.NAME));
+CurrencyExchangeSettings.Register(builder.Services, builder.Configuration);
 
 // Add services to the container.
 builder.Services.AddSingleton<DB>();
