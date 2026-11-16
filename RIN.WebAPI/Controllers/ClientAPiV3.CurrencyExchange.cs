@@ -20,7 +20,7 @@ namespace RIN.WebAPI.Controllers
             }
 
             var rates = new List<CurrencyExchangeRateResp>();
-            foreach (var rate in CurrencyExchangeRates.All)
+            foreach (var rate in CurrencyExchange.Rates)
             {
                 var bought = await Db.GetCurrencyBoughtToday(characterGuid, rate);
                 if (bought == null)
@@ -56,7 +56,7 @@ namespace RIN.WebAPI.Controllers
                 return ReturnError(Error.Codes.ERR_UNKNOWN, "You can only exchange your own currency.", StatusCodes.Status403Forbidden);
             }
 
-            var rate = CurrencyExchangeRates.Find(req.from_sdb_id, req.to_sdb_id);
+            var rate = CurrencyExchange.FindRate(req.from_sdb_id, req.to_sdb_id);
             if (rate == null)
             {
                 return ReturnError(Error.Codes.ERR_UNKNOWN, "The exchange does not trade those currencies.", StatusCodes.Status400BadRequest);
