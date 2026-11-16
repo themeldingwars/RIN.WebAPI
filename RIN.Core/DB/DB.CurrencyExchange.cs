@@ -8,34 +8,37 @@ public partial class DB
     // Charges nobody settled by now are given up on, whatever became of the web request that opened them
     private const int WALLET_CHARGE_STALE_SECONDS = 30;
 
-    // Settling takes this lock per character. The two key form keeps it apart from the single key locks friends use.
+    // Opening and settling take this lock per character. The two key form keeps it apart from the single key locks friends use.
     private const string CURRENCY_EXCHANGE_LOCK_SQL = @"SELECT pg_advisory_xact_lock(4501, hashtext(@characterGuid::text))";
 
-    // The exchange's day is the UTC one
+    // The exchange's day is the UTC one, and it is the day a purchase was opened on. Pending purchases count too, as
+    // long as they can still go through (settling gives up on stale ones), so opening one reserves its share of the
+    // limit and settling never has to know the limit.
     private const string BOUGHT_TODAY_SQL = @"
             SELECT COALESCE(SUM(to_quantity), 0)::integer
             FROM webapi.""CharacterCurrencyExchanges""
             WHERE character_guid = @characterGuid
             AND exchange_day = (now() AT TIME ZONE 'UTC')::date
-            AND status = 1
+            AND (status = 1 OR (status = 0 AND created_at >= now() - make_interval(secs => @staleSeconds)))
             AND from_sdb_id = @FromSdbId
             AND to_sdb_id = @ToSdbId";
 
     public async Task<int?> GetCurrencyBoughtToday(long characterGuid, CurrencyExchangeRate rate)
     {
         var failed = false;
-        var bought = await DBCall(conn => conn.QueryFirstAsync<int>(BOUGHT_TODAY_SQL, new { characterGuid, rate.FromSdbId, rate.ToSdbId }),
+        var bought = await DBCall(conn => conn.QueryFirstAsync<int>(BOUGHT_TODAY_SQL,
+                new { characterGuid, rate.FromSdbId, rate.ToSdbId, staleSeconds = (double)WALLET_CHARGE_STALE_SECONDS }),
             _ => failed = true);
 
         return failed ? null : bought;
     }
 
-    // Settling checks the limit again, other purchases can get there first
+    // Under the lock, so two purchases at once can't both fit in what's left of the limit
     public async Task<(CurrencyExchangeStatus status, long exchangeId)> OpenCurrencyExchange(long characterGuid, CurrencyExchangeRate rate, int exchanges)
     {
         const string OPEN_SQL = @"
-                INSERT INTO webapi.""CharacterCurrencyExchanges"" (character_guid, from_sdb_id, from_quantity, to_sdb_id, to_quantity)
-                VALUES (@characterGuid, @FromSdbId, @fromQuantity, @ToSdbId, @toQuantity)
+                INSERT INTO webapi.""CharacterCurrencyExchanges"" (character_guid, from_sdb_id, from_quantity, to_sdb_id, to_quantity, exchange_day)
+                VALUES (@characterGuid, @FromSdbId, @fromQuantity, @ToSdbId, @toQuantity, (now() AT TIME ZONE 'UTC')::date)
                 RETURNING id";
 
         if (exchanges <= 0 || exchanges > rate.DailyLimit / rate.ToQuantity)
@@ -49,7 +52,10 @@ public partial class DB
         {
             await using var tx = await conn.BeginTransactionAsync();
 
-            var bought = await conn.QueryFirstAsync<int>(BOUGHT_TODAY_SQL, new { characterGuid, rate.FromSdbId, rate.ToSdbId }, tx);
+            await conn.ExecuteAsync(CURRENCY_EXCHANGE_LOCK_SQL, new { characterGuid }, tx);
+
+            var bought = await conn.QueryFirstAsync<int>(BOUGHT_TODAY_SQL,
+                new { characterGuid, rate.FromSdbId, rate.ToSdbId, staleSeconds = (double)WALLET_CHARGE_STALE_SECONDS }, tx);
             if (bought + toQuantity > rate.DailyLimit)
                 return (CurrencyExchangeStatus.LimitReached, 0L);
 
@@ -77,7 +83,7 @@ public partial class DB
         const string SETTLE_SQL = @"
                 UPDATE webapi.""CharacterCurrencyExchanges""
                 SET status = @status,
-                    exchange_day = CASE WHEN @status = 1 THEN (now() AT TIME ZONE 'UTC')::date END
+                    exchange_day = CASE WHEN @status = 1 THEN exchange_day END
                 WHERE id = @exchangeId";
 
         var failed = false;
@@ -100,20 +106,12 @@ public partial class DB
             var status  = (CurrencyExchangeStatus)request.status;
             if (pending)
             {
-                var rate = CurrencyExchangeRates.Find(request.FromSdbId, request.ToSdbId);
-                if (request.Stale || rate == null)
-                {
+                if (request.Stale)
                     status = CurrencyExchangeStatus.NoAnswer;
-                }
                 else if (!paid)
-                {
                     status = CurrencyExchangeStatus.NotEnough;
-                }
                 else
-                {
-                    var bought = await conn.QueryFirstAsync<int>(BOUGHT_TODAY_SQL, new { characterGuid, rate.FromSdbId, rate.ToSdbId }, tx);
-                    status = bought + request.ToQuantity > rate.DailyLimit ? CurrencyExchangeStatus.LimitReached : CurrencyExchangeStatus.Exchanged;
-                }
+                    status = CurrencyExchangeStatus.Exchanged;
             }
 
             var kept    = pending && status == CurrencyExchangeStatus.Exchanged;
