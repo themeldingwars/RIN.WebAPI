@@ -266,6 +266,7 @@ message Event {
       InventoryUpdated InventoryUpdated = 14;
       UnlocksUpdated UnlocksUpdated = 15;
       FriendNotification FriendNotification = 16;
+      LoadoutPerksUpdated LoadoutPerksUpdated = 17;
    }
 }
 message FriendNotification {
@@ -321,6 +322,11 @@ message InventoryUpdated {
 message ItemModule {
    uint32 SlotIndex = 1;
    uint32 ModuleSdbId = 2;
+}
+message LoadoutPerksUpdated {
+   uint64 CharacterGuid = 1;
+   int32 LoadoutId = 2;
+   repeated uint32 PerkSdbIds = 3 [packed = false];
 }
 message LoadoutVisual {
    uint32 VisualType = 1;

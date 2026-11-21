@@ -1446,7 +1446,7 @@ ALTER TABLE webapi."CharacterLoadoutPerks" OWNER TO tmwadmin;
 -- Name: TABLE "CharacterLoadoutPerks"; Type: COMMENT; Schema: webapi; Owner: tmwadmin
 --
 
-COMMENT ON TABLE webapi."CharacterLoadoutPerks" IS 'Perk modules the player has slotted into a loadout. Identified by sdb id (dbitems::PerkModule.id), not by guid. PIN enforces the 10 perk cap and the frame bandwidth.';
+COMMENT ON TABLE webapi."CharacterLoadoutPerks" IS 'Perk modules the player has slotted into a loadout. Identified by sdb id (dbitems::PerkModule.id), not by guid. Replaced as a whole set by the client API perk lock-in (POST garage_slots/{loadoutId}/perks), which enforces the 10 perk cap and the frame bandwidth; certificate requirements are not checked.';
 
 
 --

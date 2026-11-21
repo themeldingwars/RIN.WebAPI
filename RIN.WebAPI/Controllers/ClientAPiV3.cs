@@ -97,18 +97,41 @@ namespace RIN.WebAPI.Controllers
             return items;
         }
 
+        private const int PerkRespecProductId = 577621;
+        private const int PerkRespecPriceId   = 1401522;
+
         // TODO: Return the proper perk data
         [HttpGet("trade/products/garage_slot_perk_respec")]
         [R5SigAuthRequired]
         public async Task<object> GarageSlotPerkRespec()
         {
-            var data = """
-                [{ "id": 577621, "name": "Perk Respec Points: 1", "remote_type": "garage_slot_perk_respec", "remote_id": 1, "quantity": 1,
+            var data = $$"""
+                [{ "id": {{PerkRespecProductId}}, "name": "Perk Respec Points: 1", "remote_type": "garage_slot_perk_respec", "remote_id": 1, "quantity": 1,
                    "unlock_context": null, "duration": 0,
-                   "prices": [{ "id": 1401522, "currency_type": "redbean", "currency_remote_id": 0, "amount": 2 }] }]
+                   "prices": [{ "id": {{PerkRespecPriceId}}, "currency_type": "redbean", "currency_remote_id": 0, "amount": 2 }] }]
                 """;
 
             return Content(data, "application/json");
+        }
+
+        [HttpPost("characters/{characterGuid}/trade/purchase")]
+        [R5SigAuthRequired]
+        public async Task<object> TradePurchase(long characterGuid, [FromBody] TradePurchaseReq req)
+        {
+            if (characterGuid != GetCid())
+            {
+                return ReturnError(Error.Codes.ERR_UNKNOWN, "You can only purchase for your own character.", StatusCodes.Status403Forbidden);
+            }
+
+            if (req.product_id != PerkRespecProductId)
+            {
+                Logger.LogInformation("Character {CharacterGuid} tried to purchase product {ProductId} at price {PriceId}, refused",
+                    characterGuid, req.product_id, req.price_id);
+                return ReturnError(Error.Codes.TMW_MSG, "This item cannot be purchased.", StatusCodes.Status400BadRequest);
+            }
+
+            Logger.LogInformation("Character {CharacterGuid} unlocked their perks with a free respec", characterGuid);
+            return Content("""{ "success": true }""", "application/json");
         }
 
         [HttpGet("leaderboards/{leaderboardId}")]

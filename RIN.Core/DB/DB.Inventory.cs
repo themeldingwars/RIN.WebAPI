@@ -318,6 +318,69 @@ namespace RIN.Core.DB
             return affected > 0;
         }
 
+        public async Task<int?> GetLoadoutPerkBandwidth(long characterGuid, int loadoutId)
+        {
+            const string SELECT_SQL = @"SELECT coalesce(b.bandwidth, 0)
+                                        FROM webapi.""CharacterLoadouts"" l
+                                        LEFT JOIN webapi.""Battleframes"" b
+                                               ON b.character_guid     = l.character_guid
+                                              AND b.battleframe_sdb_id = l.chassis_id
+                                        WHERE l.loadout_id     = @loadoutId
+                                          AND l.character_guid = @characterGuid";
+
+            return await DBCall(conn => conn.QuerySingleOrDefaultAsync<int?>(SELECT_SQL, new { characterGuid, loadoutId }));
+        }
+
+        public async Task<List<int>> GetLoadoutPerks(long characterGuid, int loadoutId)
+        {
+            const string SELECT_SQL = @"SELECT k.perk_item_sdb_id
+                                        FROM webapi.""CharacterLoadoutPerks"" k
+                                        INNER JOIN webapi.""CharacterLoadouts"" l ON k.loadout_id = l.loadout_id
+                                        WHERE l.character_guid = @characterGuid
+                                          AND k.loadout_id     = @loadoutId
+                                        ORDER BY k.id";
+
+            var perks = await DBCall(conn => conn.QueryAsync<int>(SELECT_SQL, new { characterGuid, loadoutId }));
+            return perks.ToList();
+        }
+
+        public async Task<bool> ReplaceLoadoutPerks(long characterGuid, int loadoutId, int[] perkItemSdbIds)
+        {
+            return await DBCall(async conn =>
+            {
+                await using var tx = await conn.BeginTransactionAsync();
+
+                var owned = await conn.QuerySingleOrDefaultAsync<int?>(@"SELECT 1
+                                                                       FROM webapi.""CharacterLoadouts""
+                                                                       WHERE loadout_id = @loadoutId
+                                                                         AND character_guid = @characterGuid
+                                                                       FOR UPDATE",
+                    new { characterGuid, loadoutId }, tx);
+                if (owned == null)
+                {
+                    return false;
+                }
+
+                await conn.ExecuteAsync(@"DELETE FROM webapi.""CharacterLoadoutPerks"" WHERE loadout_id = @loadoutId",
+                    new { loadoutId }, tx);
+
+                await conn.ExecuteAsync(@"INSERT INTO webapi.""CharacterLoadoutPerks"" (loadout_id, perk_item_sdb_id, level)
+                                          SELECT @loadoutId, p.perk, 0
+                                          FROM unnest(@perkItemSdbIds) WITH ORDINALITY AS p(perk, ord)
+                                          ORDER BY p.ord",
+                    new { loadoutId, perkItemSdbIds }, tx);
+
+                await conn.ExecuteAsync(@"SELECT pg_notify('events', 'LoadoutPerksUpdated->' || json_build_object(
+                                              'CharacterGuid', @characterGuid,
+                                              'LoadoutId',     @loadoutId,
+                                              'PerkSdbIds',    @perkItemSdbIds)::text);",
+                    new { characterGuid, loadoutId, perkItemSdbIds }, tx);
+
+                await tx.CommitAsync();
+                return true;
+            });
+        }
+
     public async Task<bool> SeedCharacterInventory(long characterGuid, List<InventorySeedItem> items, List<InventorySeedResource> resources, List<InventorySeedLoadout> loadouts, List<InventorySeedLoadoutSlot> slots, List<InventorySeedLoadoutVisual> visuals)
         {
             return await DBCall(async conn =>

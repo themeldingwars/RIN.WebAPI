@@ -19,6 +19,7 @@ namespace RIN.InternalAPI.Models
     [ProtoInclude(14, typeof(InventoryUpdated))]
     [ProtoInclude(15, typeof(UnlocksUpdated))]
     [ProtoInclude(16, typeof(FriendNotification))]
+    [ProtoInclude(17, typeof(LoadoutPerksUpdated))]
     public abstract class Event;
 
     [ProtoContract]
@@ -124,5 +125,13 @@ namespace RIN.InternalAPI.Models
     public class UnlocksUpdated : Event
     {
         [ProtoMember(1)] public ulong CharacterGuid { get; set; }
+    }
+
+    [ProtoContract]
+    public class LoadoutPerksUpdated : Event
+    {
+        [ProtoMember(1)] public ulong  CharacterGuid { get; set; }
+        [ProtoMember(2)] public int    LoadoutId     { get; set; }
+        [ProtoMember(3)] public uint[] PerkSdbIds    { get; set; }
     }
 }

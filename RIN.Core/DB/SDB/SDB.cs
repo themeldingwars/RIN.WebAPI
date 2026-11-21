@@ -107,6 +107,20 @@ namespace RIN.Core.DB.SDB
             return result;
         }
 
+        public async Task<Dictionary<int, int>> GetPerkModuleCosts(int[] perkSdbIds)
+        {
+            if (perkSdbIds == null || perkSdbIds.Length == 0)
+                return new Dictionary<int, int>();
+
+            const string SELECT_SQL = @"SELECT id::int, points_cost::int
+                FROM sdb.""dbitems::PerkModule""
+                WHERE id = ANY(@perkSdbIds)";
+
+            var result = await DBCall(conn => conn.QueryAsync<(int id, int points_cost)>(SELECT_SQL, new { perkSdbIds }));
+
+            return result.ToDictionary(row => row.id, row => row.points_cost);
+        }
+
         /// <summary>
         /// The palettes these chassis start with.
         /// </summary>
